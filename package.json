@@ -17,8 +17,9 @@
   "build": {
     "appId": "com.trpg.narrator",
     "productName": "TRPG Narrator",
-    "mac": {
-      "target": "dmg"
+  "mac": {
+      "target": "dmg",
+      "identity": null
     },
     "win": {
       "target": "nsis"
