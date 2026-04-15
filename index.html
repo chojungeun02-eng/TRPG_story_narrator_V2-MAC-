@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRPG Story Narrator (Master V55)</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+    <style>
+        :root {
+            --primary: #6366f1; /* Indigo */
+            --primary-hover: #4f46e5;
+            --bg-main: #f8fafc;
+            --bg-panel: #ffffff;
+            --bg-dark: #1e1e2f; /* KP Panel BG */
+            --text-main: #334155;
+            --text-dark: #f8fafc;
+            --border-light: #e2e8f0;
+            --border-dark: #3f3f5a;
+            --danger: #ef4444;
+            --success: #10b981;
+            --special: #ec4899; /* Pink */
+        }
+
+        body {
+            font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            overflow: hidden; 
+        }
+        
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1600px;
+            height: 100vh;
+            padding: 20px;
+            margin: 0 auto; 
+            box-sizing: border-box;
+        }
+        
+        .panel {
+            background-color: var(--bg-panel);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+        
+        #panel-1 { width: 20%; flex: none; background-color: #f8fafc; border-right: none; } 
+        #panel-2 { width: 38%; flex: none; } 
+        #panel-3 { flex: 1; min-width: 0; background-color: var(--bg-dark); color: var(--text-dark); border-color: var(--border-dark); } 
+
+        .resizer {
+            flex: 0 0 16px; cursor: col-resize; background: transparent; z-index: 10;
+            position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .resizer::after { content: ''; width: 4px; height: 36px; background: #cbd5e1; border-radius: 4px; transition: 0.2s; }
+        .resizer:hover::after, .resizer.resizing::after { background: var(--primary); height: 100%; }
+
+        h2 { margin-top: 0; font-size: 1.15rem; border-bottom: 2px solid var(--border-light); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #0f172a;}
+        #panel-3 h2 { border-bottom: 2px solid var(--border-dark); color: #fde047; align-items: flex-start; }
+
+        .editable-title { 
+            cursor: text; padding: 4px 8px; border-radius: 6px; transition: 0.2s; margin-left: -8px; 
+            outline: none; border-bottom: 2px solid transparent; 
+        }
+        .editable-title:hover { background-color: #e2e8f0; color: var(--primary); }
+        .editable-title:focus { border-bottom: 2px dashed var(--primary); background-color: transparent; }
+
+        button { cursor: pointer; transition: 0.2s; font-family: inherit; }
+        .add-btn { background-color: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; box-shadow: 0 2px 4px rgba(99,102,241,0.2);}
+        .add-btn.folder { background-color: #f59e0b; box-shadow: 0 2px 4px rgba(245,158,11,0.2);}
+        .add-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .collapse-btn { background-color: #e2e8f0; color: #475569; border: none; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; }
+        .collapse-btn:hover { background-color: #cbd5e1; color: #1e293b; }
+        
+        .tool-btn { 
+            background: white; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; color: #475569; font-size: 0.8rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s ease;
+            text-align: center; line-height: 1.3; padding: 6px 12px; min-width: 76px;
+        }
+        .tool-btn:hover { background: #e2e8f0; border-color: #94a3b8; color: var(--primary); transform: translateY(-1px); }
+        
+        .quick-editor-box { background: #eef2ff; border: 2px solid var(--primary); border-radius: 12px; padding: 16px; margin-top: 16px; animation: fadeIn 0.2s ease-out; box-shadow: 0 4px 12px rgba(99,102,241,0.15);}
+
+        .scroll-area { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; padding-top: 10px; padding-right: 8px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        #panel-3 ::-webkit-scrollbar-thumb { background: #475569; }
+        
+        .tree-root { display: flex; flex-direction: column; gap: 8px; padding-bottom: 30px; }
+        .tree-branch { margin-left: 12px; margin-top: 6px; padding-left: 12px; border-left: 2px dashed #cbd5e1; display: flex; flex-direction: column; gap: 6px; }
+        
+        .folder-item, .scene-item { cursor: grab; transition: all 0.2s; position: relative;}
+        .folder-item:active, .scene-item:active { cursor: grabbing; }
+        .drop-above { border-top: 3px solid var(--primary) !important; }
+        .drop-below { border-bottom: 3px solid var(--primary) !important; }
+        .drop-inside { background-color: #e0e7ff !important; border: 2px dashed var(--primary) !important; }
+
+        .folder-item { padding: 10px 14px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; background-color: #fef3c7; border: 1px solid #fde68a; font-weight: 700; color: #d97706; user-select: none; }
+        .folder-item:hover { background-color: #fde68a; }
+        
+        .scene-item { padding: 10px 14px; border: 1px solid var(--border-light); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; background-color: white; user-select: none; font-weight: 500;}
+        .scene-item:hover { background-color: #f8fafc; border-color: #cbd5e1; }
+        .scene-item.active { border-color: var(--primary); background-color: #e0e7ff; box-shadow: 0 0 0 1px var(--primary); font-weight: 700; color: var(--primary-hover);}
+        .badge { font-size: 0.75rem; background: #e2e8f0; padding: 2px 6px; border-radius: 6px; margin-left: 6px; font-weight: 600; color: #475569;}
+        .expand-icon { cursor: pointer; padding: 0 4px; }
+
+        .folder-item.bookmarked, .scene-item.bookmarked {
+            background-color: rgba(236, 72, 153, 0.1) !important;
+            border-color: rgba(236, 72, 153, 0.4) !important;
+            border-left: 4px solid var(--special) !important;
+        }
+        .scene-item.bookmarked { color: #be185d; font-weight: bold; }
+        .folder-item.bookmarked { color: #be185d; }
+
+        .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+        .input-group label { font-weight: 700; font-size: 0.9rem; color: #475569; display: flex; justify-content: space-between; align-items: center;}
+        
+        .font-controls { display: flex; gap: 6px; align-items: center; }
+        
+        .font-btn { 
+            padding: 0; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; 
+            border: 1px solid var(--border-light); background: #f8fafc; border-radius: 6px; font-weight: bold; color: #475569; 
+            font-size: 1rem; line-height: 1;
+        }
+        .font-btn:hover { background: #e2e8f0; }
+
+        input[type="text"] { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; font-family: inherit; transition: 0.2s;}
+        textarea { padding: 14px; border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical; font-family: inherit; line-height: 1.6; width: 100%; box-sizing: border-box; transition: 0.2s;}
+        .large-textarea { min-height: 180px; } 
+        input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+        
+        .choice-editor-box { background-color: #f8fafc; border: 2px solid var(--primary); border-radius: 12px; padding: 20px; position: relative; animation: fadeIn 0.2s ease-out; box-shadow: 0 4px 12px rgba(99,102,241,0.08);}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .close-editor-btn { position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;}
+        .close-editor-btn:hover { background: #e2e8f0; color: #334155; }
+
+        .roll-editor-box { background-color: #faf5ff; border: 1px solid #d8b4e2; border-radius: 10px; padding: 16px; margin-bottom: 16px; position: relative; }
+        .roll-editor-box h4 { margin-top: 0; color: #9c27b0; border-bottom: 1px solid #f3e5f5; padding-bottom: 8px; margin-bottom: 12px; font-size: 0.95rem; display:flex; justify-content:space-between; align-items:center;}
+        .roll-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .kp-section { background-color: #26263c; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; border: 1px solid var(--border-dark); box-shadow: 0 4px 6px rgba(0,0,0,0.2);}
+        .empty-msg { color: #94a3b8; text-align: center; margin-top: 30px; font-size: 0.9rem; line-height: 1.5;}
+        
+        .kp-draggable-item { border: 2px solid transparent; border-radius: 8px; margin-bottom: 8px; transition: all 0.2s; }
+        .kp-draggable-item.dragging { background-color: rgba(255,255,255,0.05); border: 2px dashed #94a3b8; }
+        .kp-draggable-item.focused-line { border-left: 4px solid var(--primary); background-color: rgba(99,102,241,0.05); }
+        
+        .dimmed { opacity: 0.50 !important; transition: opacity 0.2s ease; }
+
+        .custom-checkbox {
+            width: 14px; height: 14px; background-color: white; border: 2px solid #cbd5e1;
+            border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; flex-shrink: 0;
+        }
+        .custom-checkbox.checked { background-color: var(--primary); border-color: white; }
+        .custom-checkbox.checked::after { content: '✔'; color: white; font-size: 10px; font-weight: 900; }
+
+        .line-copy-box { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: #32324b; border-radius: 8px; border: 1px solid #444460; cursor: context-menu; transition: all 0.2s ease;}
+        .line-copy-box:hover { background: #3a3a56; border-color: #555575; }
+        
+        .line-copy-text { 
+            flex-grow: 1; line-height: 1.5; font-size: 0.9rem; color: #e2e8f0; white-space: pre-wrap; 
+            cursor: text; outline: none; border-bottom: 1px solid transparent; user-select: text; transition: 0.2s;
+        }
+        .line-copy-text:focus { border-bottom: 1px dashed #fde047; background-color: rgba(255,255,255,0.05); padding-bottom: 2px; }
+        
+        .line-copy-btn { background: var(--primary); color: white; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 700; font-size: 0.8rem; white-space: nowrap; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+        .line-copy-btn:hover { background: var(--primary-hover); }
+
+        .line-copy-box.pink-highlight { background-color: rgba(236, 72, 153, 0.1); border-color: rgba(236, 72, 153, 0.4); border-left: 4px solid var(--special); }
+        .line-copy-box.pink-highlight .line-copy-text { color: #fbcfe8; font-weight: bold; }
+        .line-copy-box.pink-highlight .line-copy-btn { background-color: var(--special); }
+
+        .kp-choice-container { margin-top: 8px; margin-bottom: 8px; margin-left: 12px; padding-left: 14px; border-left: 2px solid #475569; }
+        .kp-choice-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+        
+        .choice-token-btn { background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: #334155; transition: 0.2s; user-select: none; display: inline-flex; align-items: center; gap: 8px;}
+        .choice-token-btn:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+        .choice-token-btn.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(99,102,241,0.3); }
+        .choice-token-btn.special { background: #fce7f3; border-color: #fbcfe8; color: #be185d; }
+        .choice-token-btn.special.active { background: var(--special); color: white; border-color: var(--special); box-shadow: 0 4px 10px rgba(236,72,153,0.3); }
+        
+        .kp-choice-result-box { margin-top: 4px; background: #1e1e2f; padding: 12px; border-radius: 10px; border-left: 4px solid var(--primary); animation: fadeIn 0.2s ease-in-out; border-top: 1px solid var(--border-dark); border-right: 1px solid var(--border-dark); border-bottom: 1px solid var(--border-dark);}
+        .kp-choice-result-box.special-border { border-left-color: var(--special); }
+
+        .dice-result-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; margin-bottom: 8px; margin-left: 12px; padding-left: 14px; border-left: 2px dashed #64748b; }
+        .dice-box { border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s; cursor: pointer; }
+        
+        .dice-box.success { background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .dice-box.failure { background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .dice-box.crit-success { background-color: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .dice-box.fumble { background-color: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); }
+        
+        /* 💡 추가된 포커스 효과 */
+        .dice-box:hover { filter: brightness(1.15); }
+
+        .dice-title { font-weight: 700; font-size: 0.85rem; padding-bottom: 6px; flex-grow: 1; outline: none; cursor: text; }
+        
+        .dice-title-container { display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+        
+        .dice-box.success .dice-title { color: #34d399; }
+        .dice-box.failure .dice-title { color: #f87171; }
+        .dice-box.crit-success .dice-title { color: #60a5fa; }
+        .dice-box.fumble .dice-title { color: #a78bfa; }
+        
+        .dice-line-wrapper { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px;}
+        .dice-text { font-size: 0.85rem; color: #e2e8f0; flex-grow: 1; line-height: 1.4; white-space: pre-wrap; outline: none; border-bottom: 1px solid transparent;}
+        .dice-text:focus { border-bottom: 1px dashed rgba(255,255,255,0.5); }
+        .dice-btn { border: none; padding: 4px 10px; border-radius: 6px; color: white; font-weight: 700; font-size: 0.75rem; cursor: pointer; white-space: nowrap;}
+        .dice-btn.success { background-color: var(--success); }
+        .dice-btn.success:hover { background-color: #059669; }
+        .dice-btn.failure { background-color: var(--danger); }
+        .dice-btn.failure:hover { background-color: #dc2626; }
+
+        .kp-memo-box { background: #fef08a; color: #713f12; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; border-left: 4px solid #f59e0b; font-weight: 600; cursor: pointer; display: flex; align-items: flex-start; transition: all 0.2s ease;}
+        .kp-bgm-box { background: #e0f2fe; color: #0369a1; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; display: flex; align-items: flex-start; font-weight: 700; cursor: pointer; transition: all 0.2s ease;}
+
+        details.cond-box summary::-webkit-details-marker { display: none; }
+
+        #custom-context-menu { position: fixed; background: white; border: 1px solid var(--border-light); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 10px; padding: 8px 0; min-width: 220px; z-index: 9999; display: none; flex-direction: column; overflow: hidden; }
+        .ctx-item { padding: 10px 16px; background: none; border: none; text-align: left; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #334155; width: 100%; display: flex; gap: 10px; align-items: center; font-family: inherit; transition: 0.1s;}
+        .ctx-item:hover { background: #f1f5f9; color: var(--primary); }
+        .ctx-item.danger { color: var(--danger); }
+        .ctx-item.danger:hover { background: #fef2f2; color: #b91c1c; }
+        .ctx-divider { height: 1px; background: var(--border-light); margin: 6px 0; }
+
+        .overlay-bg { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 10000; align-items: center; justify-content: center; }
+        .prompt-box { background: white; padding: 28px; border-radius: 16px; width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 16px; }
+        .prompt-title { margin: 0; color: #0f172a; font-size: 1.15rem; font-weight: 700;}
+        .prompt-input { width: 100%; height: 120px; padding: 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-family: inherit; font-size: 1rem; resize: vertical; box-sizing: border-box; line-height: 1.5; }
+        .prompt-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;}
+        .prompt-btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.95rem; }
+        .prompt-btn.cancel { background: #f1f5f9; color: #475569; }
+        .prompt-btn.cancel:hover { background: #e2e8f0; }
+        .prompt-btn.confirm { background: var(--primary); color: white; }
+
+        .timer-wrapper { display: flex; align-items: center; gap: 12px; }
+        .timer-mode-btn, .timer-btn, .pip-btn-prominent { white-space: nowrap; }
+
+        .timer-mode-btn {
+            background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 0 12px; border-radius: 8px;
+            font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: 0.2s; height: 36px;
+            display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+        }
+        .timer-mode-btn:hover { background: #475569; color: white; }
+        
+        .timer-container {
+            display: flex; align-items: center; gap: 6px; background: #1e1e2f; padding: 0 14px;
+            border-radius: 8px; border: 1px solid #475569; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            height: 36px; box-sizing: border-box; white-space: nowrap;
+        }
+        
+        #timer-display {
+            font-family: 'Courier New', Courier, monospace; font-size: 1.6rem; font-weight: 900;
+            color: #fef08a; letter-spacing: 2px; min-width: 130px; margin-right: 8px; text-align: center;
+            cursor: text; transition: 0.2s; outline: none; border-bottom: 2px solid transparent; user-select: text;
+        }
+        #timer-display:hover { color: #fde047; text-shadow: 0 0 8px rgba(253,224,71,0.5); }
+        #timer-display:focus { border-bottom: 2px dashed #fde047; text-shadow: 0 0 8px rgba(253,224,71,0.5); }
+        
+        .timer-btn {
+            background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 4px;
+            border-radius: 4px; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; font-size: 1.2rem;
+        }
+        .timer-btn:hover { color: white; transform: scale(1.1); }
+        .timer-btn.reset:hover { color: var(--danger); }
+
+        .pip-btn-prominent {
+            background-color: #facc15; color: #854d0e; border: 1px solid #eab308; font-weight: 900;
+            padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; cursor: pointer;
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 4px; height: 36px;
+            box-sizing: border-box; box-shadow: 0 2px 8px rgba(250, 204, 21, 0.3);
+        }
+        .pip-btn-prominent:hover { background-color: #fef08a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(250, 204, 21, 0.4); }
+
+        .kp-mode-active #panel-1, .kp-mode-active #panel-2, .kp-mode-active .resizer { display: none !important; }
+        .kp-mode-active #pip-btn { display: none !important; }
+        .kp-mode-active #panel-3 { width: 100% !important; border-radius: 0 !important; border: none !important; }
+        .kp-mode-active .container { padding: 0; max-width: 100%; }
+        
+        .search-flash { animation: searchFlashAnim 1.5s ease-out; border-radius: 4px; }
+        @keyframes searchFlashAnim {
+            0% { background-color: #fef08a; color: #854d0e; text-shadow: none; box-shadow: 0 0 10px #fef08a; }
+            100% { background-color: transparent; }
+        }
+    </style>
+</head>
+<body>
+
+<input type="file" id="file-import" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+
+<div id="prompt-overlay" class="overlay-bg">
+    <div class="prompt-box">
+        <h3 class="prompt-title" id="prompt-title">제목</h3>
+        <textarea class="prompt-input" id="prompt-input"></textarea>
+        <div class="prompt-buttons">
+            <button class="prompt-btn cancel" onclick="closeCustomPrompt()">취소</button>
+            <button class="prompt-btn confirm" onclick="confirmCustomPrompt()">확인</button>
+        </div>
+    </div>
+</div>
+
+<div id="alert-overlay" class="overlay-bg" style="z-index: 10001;">
+    <div class="prompt-box" style="width: 360px; text-align: center; padding: 32px 24px;">
+        <h3 id="alert-message" style="margin: 0 0 24px 0; color: #0f172a; font-size: 1.05rem; line-height: 1.6; font-weight: 700; white-space: pre-wrap; word-break: keep-all;">메시지</h3>
+        <button class="prompt-btn confirm" style="width: 100%;" onclick="document.getElementById('alert-overlay').style.display='none'">확인</button>
+    </div>
+</div>
+
+<div id="custom-context-menu"></div>
+
+<div class="container" id="main-container">
+    <div class="panel" id="panel-1">
+        <h2 style="margin-bottom: 8px;">
+            <span id="campaign-title" class="editable-title" contenteditable="true" onblur="updateCampaignTitle(this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" title="클릭하여 이름 수정">시나리오 이름</span> 
+            <div style="display:flex; gap:6px;">
+                <button class="add-btn folder" onclick="addFolder()">+ 폴더</button>
+                <button class="add-btn" onclick="addScene(null)">+ 장면</button>
+            </div>
+        </h2>
+        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px; text-align: right; font-weight: 500;">💡 이름을 클릭하여 수정하세요</div>
+        
+        <div style="margin-bottom: 12px;">
+            <input type="text" id="scene-search-input" placeholder="🔍 장면/폴더 검색..." style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; font-size: 0.85rem; outline: none; background-color: white;" oninput="renderSceneList()">
+        </div>
+
+        <div class="scroll-area" id="scene-list"></div>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 15px; margin-bottom: 20px;">
+            <button style="padding:12px; background:var(--success); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.95rem; box-shadow: 0 2px 4px rgba(16,185,129,0.2);" onclick="exportToFile()">💾 파일로 저장</button>
+            <button style="padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.95rem; box-shadow: 0 2px 4px rgba(99,102,241,0.2);" onclick="triggerFileImport()">📂 파일 불러오기</button>
+            <button style="padding:12px; background:var(--danger); color:white; border:none; border-radius:8px; font-weight:700; font-size:0.95rem; box-shadow: 0 2px 4px rgba(239,68,68,0.2);" onclick="resetAll()">🗑️ 전체 초기화</button>
+        </div>
+        
+        <div style="position: absolute; bottom: 10px; right: 10px; color: #94a3b8; font-size: 0.8rem; font-weight: 500; user-select: none;">@padalg_01</div>
+    </div>
+
+    <div class="resizer" id="resizer-1"></div>
+
+    <div class="panel" id="panel-2">
+        <h2 style="color: #0f172a; display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-grow:1;">
+                <span style="white-space: nowrap;">편집기</span>
+                <div style="display:flex; gap:6px;">
+                    <button class="tool-btn" onclick="toggleDescToAll()" title="모든 줄에 /desc를 일괄 추가하거나 제거합니다">/desc<br>생성</button>
+                    <button class="tool-btn" onclick="openReplaceModal()" title="단어를 일괄 변경합니다">단어 일괄<br>변경</button>
+                    <button class="tool-btn" id="btn-auto-highlight" onclick="setAutoHighlightWord()" title="입력한 단어가 포함된 줄을 진행 패널에서 자동으로 강조합니다.">자동<br>강조</button>
+                    <button class="tool-btn" onclick="prependWordToLines()" title="입력한 단어가 포함된 줄의 맨 앞에 지정한 단어를 추가합니다">단어<br>추가</button>
+                </div>
+            </div>
+            <div style="margin-left: auto; display:flex; gap:10px; align-items:center; flex-shrink:0;">
+                <button class="collapse-btn" id="editor-collapse-btn" onclick="toggleEditorPanel()">◀ 접기</button>
+            </div>
+        </h2>
+        <div class="scroll-area" id="editor-area">
+            <div class="empty-msg">왼쪽에서 장면을 선택해주세요.</div>
+        </div>
+    </div>
+
+    <div class="resizer" id="resizer-2"></div>
+
+    <div class="panel" id="panel-3">
+        <h2 style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-top: 4px;">
+                <button id="expand-editor-btn" class="collapse-btn" style="display:none;" onclick="toggleEditorPanel()">▶ 편집기 열기</button>
+                <span style="line-height: 1; white-space: nowrap;">진행 패널</span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin-left: auto;">
+                
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="text" id="kp-search-input" placeholder="패널 내 검색..." style="padding: 4px 10px; border-radius: 6px; border: 1px solid #475569; background: #1e1e2f; color: #f8fafc; font-size: 0.85rem; width: 140px; outline: none; transition: border-color 0.2s; height: 36px; box-sizing: border-box;" onfocus="this.style.borderColor='#facc15';" onblur="this.style.borderColor='#475569';" onkeydown="if(event.key==='Enter') searchKpPanel()">
+                    <button class="timer-mode-btn" style="height: 36px; padding: 0 10px;" onclick="searchKpPanel()" title="다음 검색 결과로 이동">🔍</button>
+                </div>
+
+                <div class="timer-wrapper">
+                    <button id="pip-btn" class="pip-btn-prominent" onclick="openNewWindow()" title="진행 패널을 완전히 독립된 윈도우 새 창으로 엽니다.">PIP창</button>
+                    <button id="timer-mode-btn" class="timer-mode-btn" onclick="toggleTimerMode()" title="클릭 시 타이머/스톱워치 모드 전환">스톱워치</button>
+                    <div class="timer-container">
+                        <span id="timer-display" contenteditable="true" 
+                              onfocus="if(isTimerRunning) toggleTimerPlay();" 
+                              onblur="handleTimerInput(this.innerText)" 
+                              onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}" 
+                              title="클릭하여 시간 설정 (예: 20 입력 후 엔터 = 20분)">00:00:00</span>
+                        <button id="timer-play-btn" class="timer-btn play" onclick="toggleTimerPlay()" title="시작/정지">▶</button>
+                        <button class="timer-btn reset" onclick="resetTimer()" title="초기화">🔄</button>
+                    </div>
+                </div>
+
+            </div>
+        </h2>
+        <div class="scroll-area" id="kp-area">
+            <div class="empty-msg">장면을 선택하면 활성화됩니다.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const isKpMode = urlParams.get('mode') === 'kp';
+    const targetSceneId = urlParams.get('scene');
+
+    if (isKpMode) {
+        document.documentElement.classList.add('kp-mode-active');
+    }
+
+    let lastKpSearchQuery = "";
+    let lastKpSearchIndex = -1;
+
+    function searchKpPanel() {
+        const input = document.getElementById('kp-search-input');
+        const query = input.value.trim().toLowerCase();
+
+        if (!query) {
+            customAlert("검색할 단어를 입력해주세요.");
+            return;
+        }
+
+        const kpArea = document.getElementById('kp-area');
+        const elements = Array.from(kpArea.querySelectorAll('.line-copy-text, .dice-text, .kp-bgm-box span, .kp-memo-box span, .dice-title'));
+        let matchedElements = elements.filter(el => el.innerText.toLowerCase().includes(query));
+
+        if (matchedElements.length === 0) {
+            customAlert(`'${query}'이(가) 포함된 내용을 찾을 수 없습니다.`);
+            lastKpSearchQuery = "";
+            lastKpSearchIndex = -1;
+            return;
+        }
+
+        if (lastKpSearchQuery !== query) {
+            lastKpSearchIndex = -1;
+            lastKpSearchQuery = query;
+        }
+
+        lastKpSearchIndex = (lastKpSearchIndex + 1) % matchedElements.length;
+        const targetEl = matchedElements[lastKpSearchIndex];
+
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        kpArea.querySelectorAll('.search-flash').forEach(el => {
+            el.classList.remove('search-flash');
+            void el.offsetWidth; 
+        });
+
+        targetEl.classList.add('search-flash');
+        
+        if (targetEl.hasAttribute('contenteditable')) {
+            targetEl.blur();
+        }
+    }
+
+    function customAlert(msg) {
+        document.getElementById('alert-message').innerText = msg;
+        document.getElementById('alert-overlay').style.display = 'flex';
+    }
+
+    // 💡 PIP 창 열기 및 실시간 연동을 위한 개선
+    function openNewWindow() {
+        saveToMemory(); // 열기 전에 최신 상태 저장
+        let url = window.location.href.split('?')[0]; 
+        url += `?mode=kp&scene=${currentSceneId || ''}`;
+        window.open(url, '_blank', 'width=550,height=800,menubar=no,toolbar=no,location=no,status=no');
+    }
+
+    function safeEncode(str) {
+        if (!str) return '';
+        return encodeURIComponent(str).replace(/'/g, "%27").replace(/"/g, "%22");
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+    }
+
+    let campaignTitle = "새로운 시나리오";
+    let scenarios = [];
+    let currentSceneId = null; 
+    let currentChoiceId = null; 
+    
+    let fontSizes = { main: 16, quick: 16, roll: 16, choice: 16 };
+    let textareaHeights = {};
+    
+    let ctxTarget = { type: null, id: null, choiceId: null, lineIndex: null, endIndex: null, lineKey: null, originalText: null, lineType: null, rollType: null };
+    let promptCallback = null;
+    let focusedKpIndex = null;
+    let focusedKpEndIndex = null;
+    let isEditorCollapsed = false;
+
+    let timerMode = 'stopwatch'; 
+    let timerSeconds = 0;
+    let timerTargetSeconds = 0;
+    let isTimerRunning = false;
+    let timerInterval = null;
+
+    function updateTimerDisplay() {
+        let displaySecs = timerMode === 'timer' ? timerTargetSeconds - timerSeconds : timerSeconds;
+        if (displaySecs < 0) displaySecs = 0;
+
+        const h = Math.floor(displaySecs / 3600).toString().padStart(2, '0');
+        const m = Math.floor((displaySecs % 3600) / 60).toString().padStart(2, '0');
+        const s = (displaySecs % 60).toString().padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${h}:${m}:${s}`;
+    }
+
+    function handleTimerInput(text) {
+        let str = text.trim().replace(/[^0-9:]/g, ''); 
+        let parsedSecs = 0;
+
+        if (str === '') {
+            parsedSecs = 0;
+        } else if (!str.includes(':')) {
+            const val = parseInt(str);
+            parsedSecs = isNaN(val) ? 0 : val * 60;
+        } else {
+            const parts = str.split(':');
+            if (parts.length === 2) {
+                parsedSecs = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+            } else if (parts.length >= 3) {
+                parsedSecs = (parseInt(parts[0]) || 0) * 3600 + (parseInt(parts[1]) || 0) * 60 + (parseInt(parts[2]) || 0);
+            }
+        }
+
+        if (timerMode === 'timer') {
+            timerTargetSeconds = parsedSecs;
+            timerSeconds = 0;
+        } else {
+            timerSeconds = parsedSecs; 
+        }
+        updateTimerDisplay();
+    }
+
+    function toggleTimerPlay() {
+        const btn = document.getElementById('timer-play-btn');
+        if (isTimerRunning) {
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+            btn.innerText = '▶';
+            btn.style.color = '';
+        } else {
+            if (timerMode === 'timer' && timerTargetSeconds <= timerSeconds) {
+                customAlert("시간을 설정해주세요!\n(숫자를 클릭하여 입력하세요)");
+                return;
+            }
+            isTimerRunning = true;
+            btn.innerText = '⏹';
+            btn.style.color = '#ef4444'; 
+            document.getElementById('timer-display').blur();
+            
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+                if (timerMode === 'timer' && timerSeconds >= timerTargetSeconds) {
+                    toggleTimerPlay();
+                    setTimeout(() => customAlert("시간이 다 되었습니다!"), 50); 
+                }
+            }, 1000);
+        }
+    }
+
+    function resetTimer() {
+        if (isTimerRunning) toggleTimerPlay();
+        timerSeconds = 0;
+        updateTimerDisplay();
+    }
+
+    function toggleTimerMode() {
+        if (isTimerRunning) toggleTimerPlay();
+        const btn = document.getElementById('timer-mode-btn');
+        if (timerMode === 'stopwatch') {
+            timerMode = 'timer';
+            btn.innerText = '타이머';
+            timerTargetSeconds = 600; 
+        } else {
+            timerMode = 'stopwatch';
+            btn.innerText = '스톱워치';
+        }
+        timerSeconds = 0;
+        updateTimerDisplay();
+    }
+
+    function updateCondState(sceneId, condKey, isOpen) {
+        const scene = scenarios.find(s => s.id === sceneId);
+        if (!scene.condStates) scene.condStates = {};
+        scene.condStates[condKey] = isOpen;
+        saveToMemory();
+    }
+
+    function getDefaultScenarios() {
+        const folderId = "folder_" + Date.now();
+        const sceneId = "scene_" + (Date.now() + 1);
+        return [
+            { id: folderId, type: 'folder', parentId: null, title: "새로운 폴더", isExpanded: true, isBookmarked: false },
+            { id: sceneId, type: 'scene', parentId: folderId, title: "새로운 장면", narration: "", isExpanded: true, dims: [], highlights: [], rolls: {}, lineChoices: {}, highlightWord: "", isBookmarked: false, condStates: {} }
+        ];
+    }
+
+    function initRollObj(item, lineType, choiceId, lineKey) {
+        let rObj;
+        if (lineType === 'narration') {
+            if(!item.rolls) item.rolls = {};
+            if(!item.rolls[lineKey]) item.rolls[lineKey] = { hasBasic: false, hasCrit: false, isCollapsed: false, successDimmed: false, failureDimmed: false, critSuccessDimmed: false, fumbleDimmed: false, success: "", failure: "", critSuccess: "", fumble: "", successTitle: "🟢 성공", failureTitle: "🔴 실패", critSuccessTitle: "🔵 대성공", fumbleTitle: "🟣 대실패" };
+            rObj = item.rolls[lineKey];
+        } else {
+            const choice = findChoiceById(item, choiceId);
+            if(!choice.rolls) choice.rolls = {};
+            if(!choice.rolls[lineKey]) choice.rolls[lineKey] = { hasBasic: false, hasCrit: false, isCollapsed: false, successDimmed: false, failureDimmed: false, critSuccessDimmed: false, fumbleDimmed: false, success: "", failure: "", critSuccess: "", fumble: "", successTitle: "🟢 성공", failureTitle: "🔴 실패", critSuccessTitle: "🔵 대성공", fumbleTitle: "🟣 대실패" };
+            rObj = choice.rolls[lineKey];
+        }
+        return rObj;
+    }
+
+    window.onload = () => {
+        const savedData = localStorage.getItem('trpgStoryDataV55') || localStorage.getItem('trpgStoryDataV54') || localStorage.getItem('trpgStoryDataV53');
+        const savedFonts = localStorage.getItem('trpgFontSizesV55') || localStorage.getItem('trpgFontSizesV54');
+        
+        if (savedFonts) {
+            try { fontSizes = JSON.parse(savedFonts); } catch(e) {}
+        }
+
+        if (savedData) {
+            const parsed = JSON.parse(savedData);
+            if (Array.isArray(parsed)) {
+                scenarios = parsed; 
+            } else {
+                campaignTitle = parsed.title || "새로운 시나리오";
+                scenarios = parsed.scenarios || [];
+                if (scenarios.length === 0) {
+                    scenarios = getDefaultScenarios();
+                }
+            }
+        } else {
+            campaignTitle = "새로운 시나리오";
+            scenarios = getDefaultScenarios();
+        }
+        
+        document.getElementById('campaign-title').innerText = campaignTitle;
+
+        // 💡 PIP 모드일 때 해당 씬 ID로 강제 이동 (Bug 3 수정 반영)
+        if (isKpMode && targetSceneId) {
+            currentSceneId = targetSceneId;
+        } else {
+            const firstScene = scenarios.find(s => s.type === 'scene');
+            currentSceneId = firstScene ? firstScene.id : null;
+        }
+        
+        if (!isKpMode) {
+            renderSceneList();
+        }
+        
+        if (currentSceneId) {
+            if (!isKpMode) renderEditor(currentSceneId);
+            renderKPView(currentSceneId);
+        } else {
+            if (!isKpMode) document.getElementById('editor-area').innerHTML = '<div class="empty-msg" style="margin-top: 40px;">👈 좌측 하단에서 <b>[+ 장면]</b>을 추가하여 시작하세요.</div>';
+            document.getElementById('kp-area').innerHTML = '<div class="empty-msg">장면을 선택하면 활성화됩니다.</div>';
+        }
+
+        window.addEventListener('click', hideContextMenu);
+        if (!isKpMode) initResizers(); 
+    };
+
+    // 💡 PIP 창 실시간 동기화를 위한 이벤트 리스너 개선
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'trpgStoryDataV55') {
+            try {
+                const parsed = JSON.parse(e.newValue);
+                if (parsed && parsed.scenarios) {
+                    scenarios = parsed.scenarios;
+                    if (currentSceneId && isKpMode) {
+                        renderKPView(currentSceneId);
+                    } else if (currentSceneId && !isKpMode) {
+                        renderSceneList();
+                        renderEditor(currentSceneId);
+                        renderKPView(currentSceneId);
+                    }
+                }
+            } catch (err) {
+                console.error("동기화 오류:", err);
+            }
+        }
+        // 메인 창에서 장면을 이동할 때 PIP 창도 따라가도록 설정
+        if (e.key === 'trpgSyncSceneV55' && isKpMode) {
+            currentSceneId = e.newValue;
+            renderKPView(currentSceneId);
+        }
+    });
+
+    function saveToMemory() { 
+        const dataToSave = { title: campaignTitle, scenarios: scenarios };
+        localStorage.setItem('trpgStoryDataV55', JSON.stringify(dataToSave)); 
+    }
+    function exportToFile() {
+        saveToMemory();
+        const dataToSave = {
+            title: campaignTitle,
+            scenarios: scenarios,
+            fontSizes: fontSizes,
+            version: "V55" 
+        };
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToSave));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", campaignTitle + "_backup.json");
+        document.body.appendChild(downloadAnchorNode); 
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function triggerFileImport() {
+        document.getElementById('file-import').click();
+    }
+
+    function handleFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                if (parsed.scenarios) {
+                    campaignTitle = parsed.title || "새로운 시나리오";
+                    scenarios = parsed.scenarios;
+                    if (parsed.fontSizes) {
+                        fontSizes = parsed.fontSizes;
+                        localStorage.setItem('trpgFontSizesV55', JSON.stringify(fontSizes));
+                    }
+                    saveToMemory();
+                    customAlert("📂 시나리오 파일을 성공적으로 불러왔습니다!");
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    customAlert("❌ 올바른 TRPG 시나리오 백업 파일이 아닙니다.");
+                }
+            } catch (error) {
+                customAlert("❌ 파일을 읽는 중 오류가 발생했습니다.");
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = ""; 
+    }
+
+    function resetAll() { 
+        if(confirm("전체 초기화하시겠습니까? (이 작업은 되돌릴 수 없습니다!)")) { 
+            const keysToRemove = [
+                'trpgStoryDataV55', 'trpgStoryDataV54', 'trpgStoryDataV53', 'trpgStoryDataV52', 'trpgStoryDataV51', 'trpgStoryDataV50', 'trpgStoryDataV49', 'trpgStoryDataV48', 'trpgStoryDataV47', 'trpgStoryDataV46', 'trpgStoryDataV45', 'trpgStoryDataV44', 'trpgStoryDataV43', 'trpgStoryDataV42', 'trpgStoryDataV41', 'trpgStoryDataV40', 'trpgStoryDataV39', 'trpgStoryDataV38', 'trpgStoryDataV37', 'trpgStoryDataV36', 'trpgStoryDataV35',
+                'trpgFontSizesV55', 'trpgFontSizesV54', 'trpgFontSizesV53', 'trpgFontSizesV52', 'trpgFontSizesV51', 'trpgFontSizesV50', 'trpgFontSizesV49', 'trpgFontSizesV48', 'trpgFontSizesV47', 'trpgFontSizesV46', 'trpgFontSizesV45', 'trpgFontSizesV44', 'trpgFontSizesV43', 'trpgFontSizesV42', 'trpgFontSizesV41', 'trpgFontSizesV40', 'trpgFontSizesV39', 'trpgFontSizesV38', 'trpgFontSizesV37', 'trpgFontSizesV36'
+            ];
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            campaignTitle = "새로운 시나리오";
+            scenarios = getDefaultScenarios();
+            currentSceneId = scenarios[1].id;
+            currentChoiceId = null;
+            focusedKpIndex = null;
+            focusedKpEndIndex = null;
+            
+            saveToMemory();
+            location.reload(); 
+        } 
+    }
+
+    function updateCampaignTitle(val) {
+        if (val.trim() !== "") {
+            campaignTitle = val.trim();
+            saveToMemory();
+        } else {
+            document.getElementById('campaign-title').innerText = campaignTitle;
+        }
+    }
+
+    function findChoiceById(scene, id) {
+        if (!scene.lineChoices) return null;
+        for (const lineKey in scene.lineChoices) {
+            const choice = scene.lineChoices[lineKey].find(c => c.id === id);
+            if (choice) return choice;
+        }
+        return null;
+    }
+    
+    function findLineByChoiceId(scene, id) {
+        if (!scene.lineChoices) return null;
+        for (const lineKey in scene.lineChoices) {
+            if (scene.lineChoices[lineKey].some(c => c.id === id)) return lineKey;
+        }
+        return null;
+    }
+
+    function initResizers() {
+        const r1 = document.getElementById('resizer-1');
+        const r2 = document.getElementById('resizer-2');
+        const p1 = document.getElementById('panel-1');
+        const p2 = document.getElementById('panel-2');
+        
+        let isResizing = false;
+        let activeResizer = null;
+
+        r1.addEventListener('mousedown', (e) => { isResizing = true; activeResizer = 1; document.body.style.cursor = 'col-resize'; e.preventDefault(); });
+        r2.addEventListener('mousedown', (e) => { isResizing = true; activeResizer = 2; document.body.style.cursor = 'col-resize'; e.preventDefault(); });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const container = document.getElementById('main-container');
+            const containerRect = container.getBoundingClientRect();
+            const availableWidth = containerRect.width - 40 - 32; 
+            
+            if (activeResizer === 1) {
+                let newWidthPx = e.clientX - containerRect.left - 20; 
+                let newPct = (newWidthPx / availableWidth) * 100;
+                if (newPct > 10 && newPct < 40) p1.style.width = newPct + '%';
+            } else if (activeResizer === 2) {
+                let p1WidthPx = p1.getBoundingClientRect().width;
+                let newWidthPx = e.clientX - containerRect.left - 20 - p1WidthPx - 16; 
+                let newPct = (newWidthPx / availableWidth) * 100;
+                if (newPct > 15 && newPct < 60) p2.style.width = newPct + '%';
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isResizing = false; activeResizer = null; document.body.style.cursor = 'default'; });
+    }
+
+    function toggleEditorPanel() {
+        isEditorCollapsed = !isEditorCollapsed;
+        const p2 = document.getElementById('panel-2');
+        const r2 = document.getElementById('resizer-2');
+        const expandBtn = document.getElementById('expand-editor-btn');
+
+        if (isEditorCollapsed) {
+            p2.dataset.savedWidth = p2.style.width || '38%';
+            p2.style.display = 'none';
+            r2.style.display = 'none';
+            expandBtn.style.display = 'inline-block';
+        } else {
+            p2.style.display = 'flex';
+            r2.style.display = 'flex';
+            p2.style.width = p2.dataset.savedWidth;
+            expandBtn.style.display = 'none';
+        }
+    }
+
+
+    let draggedKpStartIdx = null;
+    let draggedKpEndIdx = null;
+    function kpDragStart(e, startIdx, endIdx) { draggedKpStartIdx = startIdx; draggedKpEndIdx = endIdx; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); e.stopPropagation(); }
+    function kpDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drop-above'); e.stopPropagation(); }
+    function kpDragLeave(e) { e.currentTarget.classList.remove('drop-above'); }
+    function kpDrop(e, targetIndex) {
+        e.stopPropagation(); e.currentTarget.classList.remove('drop-above');
+        if (draggedKpStartIdx === targetIndex || draggedKpStartIdx === null) return;
+        const scene = scenarios.find(s => s.id === currentSceneId); 
+        const lines = scene.narration.split('\n');
+        
+        const blockLength = draggedKpEndIdx - draggedKpStartIdx + 1;
+        const itemLines = lines.splice(draggedKpStartIdx, blockLength);
+        
+        let insertIdx = targetIndex;
+        if (targetIndex > draggedKpStartIdx) { insertIdx -= blockLength; }
+
+        if (itemLines.length > 0) {
+            const firstLine = itemLines[0].trim();
+            if (firstLine.startsWith('#MEMO:') || firstLine.startsWith('#BGM:') || firstLine.startsWith('#COND:')) {
+                const lineAfter = lines[insertIdx];
+                if (lineAfter !== undefined && lineAfter.trim() !== '' && !lineAfter.trim().startsWith('#')) {
+                    itemLines.push('');
+                }
+            }
+        }
+        
+        lines.splice(insertIdx, 0, ...itemLines);
+        scene.narration = lines.join('\n'); 
+        
+        saveToMemory(); 
+        if(!isKpMode) renderEditor(currentSceneId); 
+        renderKPView(currentSceneId);
+    }
+    function kpDragEnd(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.kp-draggable-item').forEach(el => el.classList.remove('drop-above')); }
+
+    let draggedItemId = null;
+    function handleDragStart(e, id) { draggedItemId = id; e.dataTransfer.effectAllowed = 'move'; e.target.classList.add('dragging'); e.stopPropagation(); }
+    function handleDragOver(e, targetId, type) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.stopPropagation(); document.querySelectorAll('.drop-above, .drop-below, .drop-inside').forEach(el => el.classList.remove('drop-above', 'drop-below', 'drop-inside')); const rect = e.currentTarget.getBoundingClientRect(); const y = e.clientY - rect.top; if (type === 'folder' || type === 'scene') { if (y < rect.height * 0.25) e.currentTarget.classList.add('drop-above'); else if (y > rect.height * 0.75) e.currentTarget.classList.add('drop-below'); else e.currentTarget.classList.add('drop-inside'); } else { if (y < rect.height / 2) e.currentTarget.classList.add('drop-above'); else e.currentTarget.classList.add('drop-below'); } }
+    function handleDragLeave(e) { e.currentTarget.classList.remove('drop-above', 'drop-below', 'drop-inside'); }
+    function handleDrop(e, targetId, type) { e.stopPropagation(); e.currentTarget.classList.remove('drop-above', 'drop-below', 'drop-inside'); if (draggedItemId === targetId) return; const draggedIndex = scenarios.findIndex(s => s.id === draggedItemId); const draggedItem = scenarios[draggedIndex]; if (isDescendant(draggedItemId, targetId)) { customAlert("하위 항목 안으로 이동할 수 없습니다."); return; } const rect = e.currentTarget.getBoundingClientRect(); const y = e.clientY - rect.top; let dropPos = 'below'; if (y < rect.height * 0.25) dropPos = 'above'; else if (y > rect.height * 0.75) dropPos = 'below'; else dropPos = 'inside'; scenarios.splice(draggedIndex, 1); const targetIndex = scenarios.findIndex(s => s.id === targetId); const targetItem = scenarios[targetIndex]; if (dropPos === 'inside' && (type === 'folder' || type === 'scene')) { draggedItem.parentId = targetId; targetItem.isExpanded = true; scenarios.splice(targetIndex + 1, 0, draggedItem); } else if (dropPos === 'above') { draggedItem.parentId = targetItem.parentId; scenarios.splice(targetIndex, 0, draggedItem); } else { draggedItem.parentId = targetItem.parentId; scenarios.splice(targetIndex + 1, 0, draggedItem); } saveToMemory(); renderSceneList(); }
+    function isDescendant(parentId, childId) { let current = scenarios.find(s => s.id === childId); while (current && current.parentId !== null) { if (current.parentId === parentId) return true; current = scenarios.find(s => s.id === current.parentId); } return false; }
+    function handleDragEnd(e) { e.target.classList.remove('dragging'); document.querySelectorAll('.drop-above, .drop-below, .drop-inside').forEach(el => el.classList.remove('drop-above', 'drop-below', 'drop-inside')); }
+
+    function doesNodeMatch(id, query) {
+        const item = scenarios.find(s => s.id === id);
+        if (!item) return false;
+        if (item.title.toLowerCase().includes(query)) return true;
+        const children = scenarios.filter(s => s.parentId === id);
+        return children.some(child => doesNodeMatch(child.id, query));
+    }
+
+    function getTreeHtml(parentId) {
+        const searchInput = document.getElementById('scene-search-input');
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+        const children = scenarios.filter(s => s.parentId === parentId);
+        if (children.length === 0) return '';
+        let html = `<div class="${parentId === null ? 'tree-root' : 'tree-branch'}">`;
+        children.forEach(item => {
+            if (query && !doesNodeMatch(item.id, query)) return;
+
+            const dragAttrs = `draggable="true" ondragstart="handleDragStart(event, '${item.id}')" ondragover="handleDragOver(event, '${item.id}', '${item.type}')" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${item.id}', '${item.type}')" ondragend="handleDragEnd(event)"`;
+            const hasChildren = scenarios.some(s => s.parentId === item.id);
+            const dblClickAction = `ondblclick="handleNodeDblClick('${item.id}', '${item.type}')"`; 
+            
+            const isExpanded = query ? true : item.isExpanded;
+            const bookmarkClass = item.isBookmarked ? 'bookmarked' : '';
+
+            if (item.type === 'folder') {
+                html += `<div class="folder-item ${bookmarkClass}" ${dragAttrs} ${dblClickAction} onclick="toggleExpand('${item.id}', event)" oncontextmenu="showContextMenu(event, 'folder', '${item.id}')">
+                            <span>${isExpanded ? '📂' : '📁'} ${item.title}</span>
+                         </div>`;
+                if (isExpanded) html += getTreeHtml(item.id);
+            } else {
+                let badges = ''; 
+                if (item.narration && item.narration.includes('#BGM:')) badges += '<span class="badge">🎵</span>'; 
+                if (item.narration && item.narration.includes('#MEMO:')) badges += '<span class="badge">📝</span>';
+                
+                const icon = hasChildren ? (isExpanded ? '🔽' : '▶️') : '📄';
+                html += `<div class="scene-item ${item.id === currentSceneId ? 'active' : ''} ${bookmarkClass}" ${dragAttrs} ${dblClickAction} onclick="selectScene('${item.id}')" oncontextmenu="showContextMenu(event, 'scene', '${item.id}')">
+                            <span class="expand-icon" onclick="toggleExpand('${item.id}', event); event.stopPropagation();">${icon}</span>
+                            <span style="flex-grow:1;">${item.title} ${badges}</span>
+                         </div>`;
+                if (isExpanded && hasChildren) html += getTreeHtml(item.id);
+            }
+        });
+        html += `</div>`; return html;
+    }
+    
+    function toggleExpand(id, event) { if(event.target.closest('.badge')) return; const item = scenarios.find(s => s.id === id); item.isExpanded = !item.isExpanded; saveToMemory(); renderSceneList(); }
+
+    function handleNodeDblClick(id, type) {
+        const item = scenarios.find(s => s.id === id);
+        openCustomPrompt((type === 'folder' ? '폴더' : '장면') + " 이름 변경:", item.title, (val) => { if (val.trim() !== "") { item.title = val; renderSceneList(); saveToMemory(); } });
+    }
+
+    function showContextMenu(event, type, id, choiceId = null, encodedLineKey = null, lineType = null, startIdx = null, endIdx = null, encodedOriginalText = null) {
+        event.preventDefault(); event.stopPropagation();
+        
+        const lineKey = encodedLineKey ? decodeURIComponent(encodedLineKey) : null;
+        const originalText = encodedOriginalText ? decodeURIComponent(encodedOriginalText) : lineKey;
+
+        ctxTarget = { type, id, choiceId, lineIndex: startIdx, endIndex: endIdx || startIdx, lineKey, originalText, lineType, rollType: endIdx };
+        
+        const menu = document.getElementById('custom-context-menu'); menu.innerHTML = ''; 
+        const item = scenarios.find(s => s.id === id);
+
+        let isDimmed = false;
+        if (type === 'memo_line' || type === 'bgm_line' || lineType === 'narration') {
+            isDimmed = item.dims && item.dims.includes(lineKey);
+        } else if (lineType === 'result') {
+            const choice = findChoiceById(item, choiceId);
+            isDimmed = choice.dims && choice.dims.includes(lineKey);
+        }
+
+        if (type === 'folder') {
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('toggleBookmark')">${item.isBookmarked ? '🔖 북마크 해제' : '🔖 북마크 지정'}</button>
+                              <div class="ctx-divider"></div>
+                              <button class="ctx-item" onclick="ctxAction('renameFolder')">✏️ 폴더 이름 변경</button>
+                              <button class="ctx-item" onclick="ctxAction('duplicateNode')">📄 폴더 복제 (내부 포함)</button>
+                              <div class="ctx-divider"></div><button class="ctx-item danger" onclick="ctxAction('deleteFolder')">❌ 폴더 삭제</button>`;
+        } else if (type === 'scene') {
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('toggleBookmark')">${item.isBookmarked ? '🔖 북마크 해제' : '🔖 북마크 지정'}</button>
+                              <div class="ctx-divider"></div>
+                              <button class="ctx-item" onclick="ctxAction('renameScene')">✏️ 장면 이름 변경</button>
+                              <button class="ctx-item" onclick="ctxAction('duplicateNode')">📄 장면 복제 (내부 포함)</button>
+                              <button class="ctx-item" onclick="ctxAction('addSubScene')">➕ 하위 장면(분기) 추가</button>
+                              <div class="ctx-divider"></div><button class="ctx-item danger" onclick="ctxAction('deleteScene')">❌ 장면 삭제</button>`;
+        } else if (type === 'token') {
+            const choice = findChoiceById(item, choiceId);
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('renameToken')">✏️ 행동 이름 변경</button><button class="ctx-item" onclick="ctxAction('toggleSpecial')">${choice.isSpecial ? '🔓 특수 토큰 해제' : '🔒 특수(히든) 지정'}</button><div class="ctx-divider"></div><button class="ctx-item danger" onclick="ctxAction('deleteToken')">❌ 토큰 삭제</button>`;
+        } else if (type === 'memo_line' || type === 'bgm_line') {
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('toggleDim')">${isDimmed ? '🌫️ 블라인드 해제' : '🌫️ 블라인드(회색) 처리'}</button>`;
+            menu.innerHTML += `<button class="ctx-item" onclick="ctxAction('editSpecialLine')">✏️ 수정</button><div class="ctx-divider"></div><button class="ctx-item danger" onclick="ctxAction('deleteSpecialLine')">❌ 삭제</button>`;
+        } else if (type === 'cond_box') {
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('editCondTitle')">✏️ 조건문 제목 수정</button><div class="ctx-divider"></div><button class="ctx-item danger" onclick="ctxAction('deleteCondOnly')">❌ 조건 박스 해제 (내부 텍스트 유지)</button>`;
+        } else if (type === 'roll_box') {
+            const rType = startIdx; 
+            const rollData = choiceId ? findChoiceById(item, choiceId).rolls[lineKey] : item.rolls[lineKey];
+            const isRollDimmed = rollData[rType + 'Dimmed'];
+            ctxTarget.rollType = rType;
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('toggleRollDim')">${isRollDimmed ? '🌫️ 블라인드 해제' : '🌫️ 블라인드(회색) 처리'}</button>`;
+        } else if (type === 'kpline') {
+            ctxTarget.lineIndex = startIdx;
+            let rollData = null;
+            if (lineType === 'narration' && item.rolls && item.rolls[lineKey]) rollData = item.rolls[lineKey];
+            if (lineType === 'result') { const choice = findChoiceById(item, choiceId); if(choice && choice.rolls && choice.rolls[lineKey]) rollData = choice.rolls[lineKey]; }
+            
+            if(rollData && rollData.hasBasic === undefined) rollData.hasBasic = true;
+            let hasRoll = rollData && (rollData.hasBasic || rollData.hasCrit);
+            let hasChoices = lineType === 'narration' && item.lineChoices && item.lineChoices[lineKey] && item.lineChoices[lineKey].length > 0;
+            
+            menu.innerHTML = `<button class="ctx-item" onclick="ctxAction('toggleHighlight')">📌 나레이션 강조</button>`;
+            menu.innerHTML += `<button class="ctx-item" onclick="ctxAction('toggleDim')">${isDimmed ? '🌫️ 블라인드 해제' : '🌫️ 블라인드(회색) 처리'}</button>`;
+            
+            if (lineType === 'narration' && (hasRoll || hasChoices)) {
+                menu.innerHTML += `<button class="ctx-item" onclick="ctxAction('toggleDimAll')">${isDimmed ? '🌫️ 하위 항목 모두 블라인드 해제' : '🌫️ 하위 항목 모두 블라인드 처리'}</button>`;
+            }
+            
+            menu.innerHTML += `<div class="ctx-divider"></div>`;
+            
+            if (lineType === 'narration') {
+                menu.innerHTML += `
+                    <button class="ctx-item" onclick="ctxAction('addChoiceToken')" style="color:var(--primary); font-weight:700;">💬 이 라인에 선택지 토큰 추가</button>
+                    <button class="ctx-item" onclick="ctxAction('addMemoBelow')">📝 이 라인 아래에 메모 박스 추가</button>
+                    <button class="ctx-item" onclick="ctxAction('addBGMBelow')">🎵 이 라인 아래에 BGM 박스 추가</button>
+                    <div class="ctx-divider"></div>`;
+            }
+
+            if (hasRoll) {
+                if (rollData && !rollData.hasCrit) {
+                    menu.innerHTML += `<button class="ctx-item" style="color:var(--primary); font-weight:700;" onclick="ctxAction('enableCritRoll')">🌟 대성공/대실패 판정 추가</button>`;
+                } else if (rollData && rollData.hasCrit) {
+                    menu.innerHTML += `<button class="ctx-item" onclick="ctxAction('disableCritRoll')">🌟 대성공/대실패 판정 숨기기</button>`;
+                }
+                
+                menu.innerHTML += `<div class="ctx-divider"></div>`;
+                
+                if (rollData.hasBasic !== false) {
+                    menu.innerHTML += `<button class="ctx-item danger" onclick="ctxAction('removeBasicRoll')">🗑️ (성공/실패) 결과 삭제</button>`;
+                }
+                if (rollData.hasCrit) {
+                    menu.innerHTML += `<button class="ctx-item danger" onclick="ctxAction('removeCritRoll')">🗑️ (대성공/대실패) 결과 삭제</button>`;
+                }
+            } else {
+                menu.innerHTML += `<button class="ctx-item" onclick="ctxAction('addBasicRoll')">🎲 판정 (성공/실패) 결과 추가</button>`;
+                menu.innerHTML += `<button class="ctx-item" style="color:var(--primary); font-weight:700;" onclick="ctxAction('addCritRollOnly')">🌟 판정 (대성공/대실패 단독) 추가</button>`;
+            }
+        }
+
+        menu.style.display = 'flex'; let x = event.clientX; let y = event.clientY;
+        if (x + 220 > window.innerWidth) x -= 220; if (y + 250 > window.innerHeight) y -= 250;
+        menu.style.left = `${x}px`; menu.style.top = `${y}px`;
+    }
+
+    function hideContextMenu(e) { if (e && e.target.closest('#prompt-overlay')) return; document.getElementById('custom-context-menu').style.display = 'none'; }
+
+    function deepDuplicate(originalId, newParentId, isRoot = true) {
+        const original = scenarios.find(s => s.id === originalId);
+        if (!original) return;
+        
+        let copy = JSON.parse(JSON.stringify(original));
+        copy.id = (copy.type === 'folder' ? 'folder_' : 'scene_') + Date.now() + Math.random().toString(36).substr(2, 5);
+        copy.parentId = newParentId;
+        if (isRoot) copy.title = copy.title + " (복제)";
+        
+        if (copy.type === 'scene' && copy.lineChoices) {
+            for (let key in copy.lineChoices) {
+                copy.lineChoices[key].forEach(c => {
+                    c.id = "choice_" + Date.now() + Math.random().toString(36).substr(2, 5);
+                });
+            }
+        }
+        
+        const originalIndex = scenarios.findIndex(s => s.id === originalId);
+        scenarios.splice(originalIndex + 1, 0, copy);
+        
+        const children = scenarios.filter(s => s.parentId === originalId);
+        children.forEach(child => {
+            deepDuplicate(child.id, copy.id, false);
+        });
+    }
+
+    function ctxAction(action) {
+        const item = scenarios.find(s => s.id === ctxTarget.id);
+        
+        if (action === 'toggleBookmark') {
+            item.isBookmarked = !item.isBookmarked;
+            saveToMemory(); renderSceneList();
+        } else if (action === 'duplicateNode') {
+            deepDuplicate(item.id, item.parentId, true);
+            saveToMemory(); renderSceneList();
+        } else if (action === 'renameFolder' || action === 'renameScene') { 
+            openCustomPrompt("새로운 이름을 입력하세요:", item.title, (val) => { if (val.trim() !== "") { item.title = val; renderSceneList(); saveToMemory(); } });
+        } else if (action === 'addSubScene') {
+            addScene(item.id); item.isExpanded = true; renderSceneList();
+        } else if (action === 'deleteFolder' || action === 'deleteScene') { deleteNodeRecursive(item.id);
+        } else if (action === 'renameToken') { 
+            const choice = findChoiceById(item, ctxTarget.choiceId); openCustomPrompt("탐사자 행동:", choice.action, (val) => { if (val.trim() !== "") { choice.action = val; renderKPView(item.id); saveToMemory(); } });
+        } else if (action === 'toggleSpecial') { 
+            const choice = findChoiceById(item, ctxTarget.choiceId); choice.isSpecial = !choice.isSpecial; renderKPView(item.id); saveToMemory();
+        } else if (action === 'deleteToken') { 
+            if(confirm("이 토큰을 삭제할까요?")) { 
+                const lineKey = findLineByChoiceId(item, ctxTarget.choiceId); item.lineChoices[lineKey] = item.lineChoices[lineKey].filter(c => c.id !== ctxTarget.choiceId);
+                if (currentChoiceId === ctxTarget.choiceId) currentChoiceId = null; 
+                if(!isKpMode) renderEditor(item.id); 
+                renderKPView(item.id); saveToMemory(); 
+            } 
+        } else if (action === 'editSpecialLine') {
+            const prefix = ctxTarget.type === 'memo_line' ? '#MEMO:' : '#BGM:';
+            openCustomPrompt("✏️ 수정: 내용 입력", ctxTarget.originalText, (val) => { 
+                if (val.trim() !== "") { 
+                    const lines = item.narration.split('\n'); 
+                    lines.splice(ctxTarget.lineIndex, ctxTarget.endIndex - ctxTarget.lineIndex + 1, prefix + val.replace(/\n/g, '\n')); 
+                    item.narration = lines.join('\n'); 
+                    if (item.dims) {
+                        const dIdx = item.dims.indexOf(ctxTarget.lineKey);
+                        if (dIdx > -1) item.dims.splice(dIdx, 1, val);
+                    }
+                    saveToMemory(); renderKPView(item.id); renderSceneList(); 
+                } 
+            });
+        } else if (action === 'deleteSpecialLine') {
+            if(confirm("삭제할까요?")) { 
+                const lines = item.narration.split('\n'); 
+                lines.splice(ctxTarget.lineIndex, ctxTarget.endIndex - ctxTarget.lineIndex + 1); 
+                item.narration = lines.join('\n'); saveToMemory(); renderKPView(item.id); renderSceneList(); 
+                if (focusedKpIndex === ctxTarget.lineIndex) { focusedKpIndex = null; focusedKpEndIndex = null; if(!isKpMode) renderEditor(item.id); }
+            }
+        } else if (action === 'editCondTitle') {
+            const lines = item.narration.split('\n');
+            const oldTitle = lines[ctxTarget.lineIndex].substring(6).trimStart();
+            openCustomPrompt("✏️ 조건문 수정", oldTitle, (val) => {
+                if (val.trim() !== "") {
+                    lines[ctxTarget.lineIndex] = "#COND:" + val;
+                    item.narration = lines.join('\n');
+                    saveToMemory(); renderKPView(item.id);
+                }
+            });
+        } else if (action === 'deleteCondOnly') {
+            if(confirm("조건 박스를 해제할까요? (안의 내용은 정상 나레이션으로 유지됩니다)")) {
+                const lines = item.narration.split('\n');
+                lines.splice(ctxTarget.lineIndex, 1);
+                item.narration = lines.join('\n');
+                saveToMemory(); renderKPView(item.id);
+            }
+        } else if (action === 'toggleHighlight') {
+            const arr = ctxTarget.lineType === 'narration' ? item.highlights : findChoiceById(item, ctxTarget.choiceId).highlights;
+            const idx = arr.indexOf(ctxTarget.lineKey); if (idx > -1) arr.splice(idx, 1); else arr.push(ctxTarget.lineKey);
+            saveToMemory(); renderKPView(item.id);
+        } else if (action === 'toggleDim') {
+            const isChoiceResult = ctxTarget.lineType === 'result';
+            const arr = isChoiceResult ? (findChoiceById(item, ctxTarget.choiceId).dims = findChoiceById(item, ctxTarget.choiceId).dims || []) : (item.dims = item.dims || []);
+            const idx = arr.indexOf(ctxTarget.lineKey);
+            if (idx > -1) arr.splice(idx, 1);
+            else arr.push(ctxTarget.lineKey);
+            saveToMemory(); renderKPView(item.id);
+        } else if (action === 'toggleDimAll') {
+            const targetState = !(item.dims && item.dims.includes(ctxTarget.lineKey));
+            
+            item.dims = item.dims || [];
+            const idx = item.dims.indexOf(ctxTarget.lineKey);
+            if (targetState && idx === -1) item.dims.push(ctxTarget.lineKey);
+            else if (!targetState && idx > -1) item.dims.splice(idx, 1);
+            
+            if (item.rolls && item.rolls[ctxTarget.lineKey]) {
+                const rollData = item.rolls[ctxTarget.lineKey];
+                rollData.successDimmed = targetState;
+                rollData.failureDimmed = targetState;
+                rollData.critSuccessDimmed = targetState;
+                rollData.fumbleDimmed = targetState;
+            }
+            
+            if (item.lineChoices && item.lineChoices[ctxTarget.lineKey]) {
+                item.lineChoices[ctxTarget.lineKey].forEach(c => {
+                    c.isChecked = targetState;
+                    c.dims = c.dims || [];
+                    if (targetState) {
+                        let resultOccs = {};
+                        const rLines = c.result.split('\n').map(l => l.trim()).filter(l => l !== '');
+                        let mappedKeys = rLines.map(l => {
+                            let occ = resultOccs[l] || 0;
+                            resultOccs[l] = occ + 1;
+                            return occ === 0 ? l : l + "_$$_" + occ;
+                        });
+                        c.dims = [...new Set([...c.dims, ...mappedKeys])];
+                    } else {
+                        c.dims = [];
+                    }
+                    if (c.rolls) {
+                        Object.keys(c.rolls).forEach(rKey => {
+                            c.rolls[rKey].successDimmed = targetState;
+                            c.rolls[rKey].failureDimmed = targetState;
+                            c.rolls[rKey].critSuccessDimmed = targetState;
+                            c.rolls[rKey].fumbleDimmed = targetState;
+                        });
+                    }
+                });
+            }
+            saveToMemory(); renderKPView(item.id);
+        } else if (action === 'toggleRollDim') {
+            const rollData = ctxTarget.choiceId ? findChoiceById(item, ctxTarget.choiceId).rolls[ctxTarget.lineKey] : item.rolls[ctxTarget.lineKey];
+            rollData[ctxTarget.rollType + 'Dimmed'] = !rollData[ctxTarget.rollType + 'Dimmed'];
+            saveToMemory(); renderKPView(item.id);
+        } else if (action === 'addBasicRoll') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasBasic = true;
+            if (ctxTarget.lineType === 'narration') { focusedKpIndex = ctxTarget.lineIndex; focusedKpEndIndex = ctxTarget.lineIndex; currentChoiceId = null; } 
+            else if (ctxTarget.lineType === 'result') { currentChoiceId = ctxTarget.choiceId; focusedKpIndex = null; focusedKpEndIndex = null; }
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'addCritRoll') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasCrit = true;
+            rObj.critSuccessTitle = rObj.critSuccessTitle || "🔵 대성공";
+            rObj.fumbleTitle = rObj.fumbleTitle || "🟣 대실패";
+            if (ctxTarget.lineType === 'narration') { focusedKpIndex = ctxTarget.lineIndex; focusedKpEndIndex = ctxTarget.lineIndex; currentChoiceId = null; } 
+            else if (ctxTarget.lineType === 'result') { currentChoiceId = ctxTarget.choiceId; focusedKpIndex = null; focusedKpEndIndex = null; }
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'addCritRollOnly') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasBasic = false;
+            rObj.hasCrit = true;
+            rObj.critSuccessTitle = "🔵 대성공";
+            rObj.fumbleTitle = "🟣 대실패";
+            if (ctxTarget.lineType === 'narration') { focusedKpIndex = ctxTarget.lineIndex; focusedKpEndIndex = ctxTarget.lineIndex; currentChoiceId = null; } 
+            else if (ctxTarget.lineType === 'result') { currentChoiceId = ctxTarget.choiceId; focusedKpIndex = null; focusedKpEndIndex = null; }
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'enableCritRoll') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasCrit = true;
+            rObj.critSuccessTitle = rObj.critSuccessTitle || "🔵 대성공";
+            rObj.fumbleTitle = rObj.fumbleTitle || "🟣 대실패";
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'disableCritRoll') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasCrit = false;
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'removeBasicRoll') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasBasic = false;
+            if(!rObj.hasBasic && !rObj.hasCrit) {
+                if (ctxTarget.lineType === 'narration') delete item.rolls[ctxTarget.lineKey];
+                else delete findChoiceById(item, ctxTarget.choiceId).rolls[ctxTarget.lineKey];
+            }
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'removeCritRoll') {
+            let rObj = initRollObj(item, ctxTarget.lineType, ctxTarget.choiceId, ctxTarget.lineKey);
+            rObj.hasCrit = false;
+            if(!rObj.hasBasic && !rObj.hasCrit) {
+                if (ctxTarget.lineType === 'narration') delete item.rolls[ctxTarget.lineKey];
+                else delete findChoiceById(item, ctxTarget.choiceId).rolls[ctxTarget.lineKey];
+            }
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'addChoiceToken') {
+            if (!item.lineChoices) item.lineChoices = {};
+            if (!item.lineChoices[ctxTarget.lineKey]) item.lineChoices[ctxTarget.lineKey] = [];
+            const newChoiceId = "choice_" + Date.now() + Math.random().toString(36).substr(2, 5);
+            item.lineChoices[ctxTarget.lineKey].push({ id: newChoiceId, action: "새로운 행동", result: "", isSpecial: false, isChecked: false, highlights: [], rolls: {} });
+            currentChoiceId = newChoiceId; focusedKpIndex = ctxTarget.lineIndex; focusedKpEndIndex = ctxTarget.endIndex;
+            saveToMemory(); if(!isKpMode) renderEditor(item.id); renderKPView(item.id);
+        } else if (action === 'addMemoBelow') {
+            openCustomPrompt("📝 메모 추가: 내용 입력", "", (val) => { if(val.trim() === "") return; const lines = item.narration.split('\n'); lines.splice(ctxTarget.endIndex + 1, 0, "#MEMO:" + val.replace(/\n/g, '\n')); item.narration = lines.join('\n'); saveToMemory(); renderKPView(item.id); renderSceneList(); });
+        } else if (action === 'addBGMBelow') {
+            openCustomPrompt("🎵 BGM 추가: 내용 입력", "", (val) => { if(val.trim() === "") return; const lines = item.narration.split('\n'); lines.splice(ctxTarget.endIndex + 1, 0, "#BGM:" + val.replace(/\n/g, '\n')); item.narration = lines.join('\n'); saveToMemory(); renderKPView(item.id); renderSceneList(); });
+        }
+        hideContextMenu();
+    }
+    function toggleRollCollapse(sceneId, choiceId, encodedLineKey) {
+        const scene = scenarios.find(s => s.id === sceneId);
+        const lineKey = decodeURIComponent(encodedLineKey);
+        const rollObj = choiceId ? findChoiceById(scene, choiceId).rolls[lineKey] : scene.rolls[lineKey];
+        if(rollObj) {
+            rollObj.isCollapsed = !rollObj.isCollapsed;
+            saveToMemory();
+            renderKPView(sceneId);
+        }
+    }
+    
+    function updateChoiceCheck(sceneId, encodedLineKey, choiceId, isChecked) {
+        const scene = scenarios.find(s => s.id === sceneId);
+        const lineKey = decodeURIComponent(encodedLineKey);
+        if(scene && scene.lineChoices && scene.lineChoices[lineKey]) {
+            const choice = scene.lineChoices[lineKey].find(c => c.id === choiceId);
+            if(choice) {
+                choice.isChecked = isChecked;
+                
+                choice.dims = choice.dims || [];
+                if (isChecked) {
+                    let resultOccs = {};
+                    const rLines = choice.result.split('\n').map(l => l.trim()).filter(l => l !== '');
+                    let mappedKeys = rLines.map(l => {
+                        let occ = resultOccs[l] || 0;
+                        resultOccs[l] = occ + 1;
+                        return occ === 0 ? l : l + "_$$_" + occ;
+                    });
+                    choice.dims = [...new Set([...choice.dims, ...mappedKeys])];
+                } else {
+                    choice.dims = [];
+                }
+                
+                if (choice.rolls) {
+                    Object.keys(choice.rolls).forEach(rKey => {
+                        choice.rolls[rKey].successDimmed = isChecked;
+                        choice.rolls[rKey].failureDimmed = isChecked;
+                        choice.rolls[rKey].critSuccessDimmed = isChecked;
+                        choice.rolls[rKey].fumbleDimmed = isChecked;
+                    });
+                }
+
+                saveToMemory();
+                renderKPView(sceneId); 
+            }
+        }
+    }
+
+    function handleInlineEdit(sceneId, choiceId, encodedLineKey, encodedOldText, lineIndex, newText) {
+        const lineKey = decodeURIComponent(encodedLineKey);
+        const oldText = decodeURIComponent(encodedOldText);
+        const cleanNewText = newText.trim();
+        if (oldText === cleanNewText || cleanNewText === '') return;
+        
+        const scene = scenarios.find(s => s.id === sceneId);
+        
+        if (!choiceId || choiceId === 'null') {
+            let lines = scene.narration.split('\n');
+            if (lines[lineIndex] !== undefined && lines[lineIndex].trim() === oldText) {
+                lines[lineIndex] = cleanNewText;
+                scene.narration = lines.join('\n');
+                
+                if (scene.rolls && scene.rolls[lineKey]) { scene.rolls[cleanNewText] = scene.rolls[lineKey]; delete scene.rolls[lineKey]; }
+                if (scene.lineChoices && scene.lineChoices[lineKey]) { scene.lineChoices[cleanNewText] = scene.lineChoices[lineKey]; delete scene.lineChoices[lineKey]; }
+                if (scene.highlights) { let hi = scene.highlights.indexOf(lineKey); if(hi>-1) scene.highlights[hi] = cleanNewText; }
+                if (scene.dims) { let di = scene.dims.indexOf(lineKey); if(di>-1) scene.dims[di] = cleanNewText; }
+            }
+        } else {
+            const choice = findChoiceById(scene, choiceId);
+            if (choice) {
+                let lines = choice.result.split('\n');
+                if (lines[lineIndex] !== undefined && lines[lineIndex].trim() === oldText) {
+                    lines[lineIndex] = cleanNewText;
+                    choice.result = lines.join('\n');
+                    
+                    if (choice.rolls && choice.rolls[lineKey]) { choice.rolls[cleanNewText] = choice.rolls[lineKey]; delete choice.rolls[lineKey]; }
+                    if (choice.highlights) { let hi = choice.highlights.indexOf(lineKey); if(hi>-1) choice.highlights[hi] = cleanNewText; }
+                    if (choice.dims) { let di = choice.dims.indexOf(lineKey); if(di>-1) choice.dims[di] = cleanNewText; }
+                }
+            }
+        }
+        saveToMemory();
+        renderKPView(sceneId);
+    }
+
+    function setAutoHighlightWord() {
+        if(!currentSceneId) return;
+        const scene = scenarios.find(s => s.id === currentSceneId);
+        
+        if(scene.highlightWord && scene.highlightWord !== "") {
+            scene.highlightWord = "";
+            saveToMemory();
+            renderKPView(currentSceneId);
+            if(!isKpMode) renderEditor(currentSceneId);
+            return;
+        }
+        
+        openCustomPrompt("진행 패널에서 자동으로 강조할 단어를 입력하세요:\n(이 장면에만 적용되며, 취소하려면 버튼을 한 번 더 누르세요)", "", (val) => {
+            scene.highlightWord = val.trim();
+            saveToMemory();
+            renderKPView(currentSceneId);
+            if(!isKpMode) renderEditor(currentSceneId); 
+        });
+    }
+
+    function prependWordToLines() {
+        if(!currentSceneId) return;
+        openCustomPrompt("어떤 단어가 포함된 줄을 찾을까요?", "", (findText) => {
+            if(!findText) return;
+            setTimeout(() => { 
+                openCustomPrompt(`'${findText}'이(가) 포함된 줄의 맨 앞에 추가할 단어를 입력하세요:\n(입력한 단어 뒤에 띄어쓰기가 한 칸 자동으로 들어갑니다)`, "", (prependText) => {
+                    if(!prependText) return;
+                    const scene = scenarios.find(s => s.id === currentSceneId);
+                    let lines = scene.narration.split('\n');
+                    let modified = false;
+                    let oldToNew = {};
+
+                    lines = lines.map(line => {
+                        if(line.includes(findText)) {
+                            modified = true;
+                            let cleanLine = line;
+                            let prefix = "";
+                            
+                            let cmdMatch = line.match(/^(\s*\/\S+\s+(?:".*?"\s+)?)/); 
+                            if (cmdMatch) {
+                                prefix = cmdMatch[1];
+                                cleanLine = line.substring(prefix.length);
+                            }
+                            
+                            let newLine = prefix + prependText + " " + cleanLine;
+                            
+                            oldToNew[line.trim()] = newLine.trim();
+                            return newLine;
+                        }
+                        return line;
+                    });
+
+                    if(modified) {
+                        let newRolls = {};
+                        for(let key in scene.rolls) {
+                            let newKey = oldToNew[key] || key;
+                            newRolls[newKey] = scene.rolls[key];
+                        }
+                        scene.rolls = newRolls;
+
+                        let newChoices = {};
+                        for(let key in scene.lineChoices) {
+                            let newKey = oldToNew[key] || key;
+                            newChoices[newKey] = scene.lineChoices[key];
+                        }
+                        scene.lineChoices = newChoices;
+
+                        if(scene.highlights) scene.highlights = scene.highlights.map(h => oldToNew[h] || h);
+                        if(scene.dims) scene.dims = scene.dims.map(d => oldToNew[d] || d);
+
+                        scene.narration = lines.join('\n');
+                        saveToMemory();
+                        if(!isKpMode) renderEditor(currentSceneId);
+                        renderKPView(currentSceneId);
+                    } else {
+                        customAlert(`'${findText}'이(가) 포함된 줄을 찾을 수 없습니다.`);
+                    }
+                });
+            }, 100); 
+        });
+    }
+
+    function openCustomPrompt(title, defaultValue, callback) {
+        document.getElementById('prompt-title').innerText = title; const inputEl = document.getElementById('prompt-input');
+        inputEl.value = defaultValue || ''; promptCallback = callback; document.getElementById('prompt-overlay').style.display = 'flex';
+        inputEl.focus(); inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+    }
+    
+    function closeCustomPrompt() { 
+        document.getElementById('prompt-overlay').style.display = 'none'; 
+    }
+    
+    function confirmCustomPrompt() { 
+        const cb = promptCallback;
+        const val = document.getElementById('prompt-input').value;
+        promptCallback = null;
+        closeCustomPrompt(); 
+        if (cb) cb(val); 
+    }
+    
+    function changeFontSize(target, changeAmount) {
+        fontSizes[target] += changeAmount; 
+        if (fontSizes[target] < 12) fontSizes[target] = 12; 
+        if (fontSizes[target] > 32) fontSizes[target] = 32; 
+        localStorage.setItem('trpgFontSizesV55', JSON.stringify(fontSizes)); 
+        if (currentSceneId && !isKpMode) renderEditor(currentSceneId);
+    }
+
+    function getFontCtrl(target) {
+        return `<div class="font-controls">
+                    <button class="font-btn" onclick="changeFontSize('${target}', -2)">-</button>
+                    <button class="font-btn" onclick="changeFontSize('${target}', 2)">+</button>
+                </div>`;
+    }
+
+    function saveTextareaHeights() {
+        if(isKpMode) return;
+        document.querySelectorAll('#editor-area textarea').forEach(ta => {
+            if (ta.id) textareaHeights[ta.id] = ta.style.height;
+        });
+    }
+
+    function restoreTextareaHeights() {
+        if(isKpMode) return;
+        document.querySelectorAll('#editor-area textarea').forEach(ta => {
+            if (ta.id && textareaHeights[ta.id]) ta.style.height = textareaHeights[ta.id];
+        });
+    }
+
+    function renderSceneList() { 
+        if(!isKpMode) document.getElementById('scene-list').innerHTML = getTreeHtml(null); 
+    }
+    
+    // 💡 장면 이동 시 PIP 창 동기화 트리거
+    function selectScene(id) { 
+        currentSceneId = id; currentChoiceId = null; focusedKpIndex = null; focusedKpEndIndex = null; 
+        localStorage.setItem('trpgSyncSceneV55', id); // PIP 동기화
+        renderSceneList(); 
+        if(!isKpMode) renderEditor(id); 
+        renderKPView(id); 
+    }
+
+    function updateSceneData(id, key, value) { 
+        scenarios.find(s => s.id === id)[key] = value; 
+        focusedKpIndex = null; 
+        focusedKpEndIndex = null;
+        saveToMemory(); 
+        const qEditor = document.getElementById('quick-editor-container');
+        if(qEditor) qEditor.style.display = 'none';
+        
+        document.querySelectorAll('.kp-draggable-item').forEach(el => el.classList.remove('focused-line'));
+        renderKPView(id); 
+    }
+
+    function updateInlineNarrationBlock(sceneId, startIdx, endIdx, newText) {
+        const scene = scenarios.find(s => s.id === sceneId);
+        let lines = scene.narration.split('\n');
+        
+        const oldLine = lines[startIdx].trim();
+        const newLines = newText.split('\n');
+        const newLine = newLines[0] ? newLines[0].trim() : '';
+        
+        if (oldLine !== newLine && oldLine !== '' && newLine !== '') {
+            if (scene.rolls && scene.rolls[oldLine]) { scene.rolls[newLine] = scene.rolls[oldLine]; delete scene.rolls[oldLine]; }
+            if (scene.lineChoices && scene.lineChoices[oldLine]) { scene.lineChoices[newLine] = scene.lineChoices[oldLine]; delete scene.lineChoices[oldLine]; }
+            if (scene.highlights) { const hIdx = scene.highlights.indexOf(oldLine); if (hIdx > -1) scene.highlights.splice(hIdx, 1, newLine); }
+            if (scene.dims) { const dIdx = scene.dims.indexOf(oldLine); if (dIdx > -1) scene.dims.splice(dIdx, 1, newLine); }
+        }
+
+        lines.splice(startIdx, endIdx - startIdx + 1, ...newLines);
+        scene.narration = lines.join('\n');
+        saveToMemory();
+        
+        focusedKpEndIndex = startIdx + newLines.length - 1;
+
+        const mainTextArea = document.getElementById('main-narration-textarea');
+        if(mainTextArea) mainTextArea.value = scene.narration;
+
+        renderKPView(sceneId);
+    }
+
+    // 💡 /desc 적용 시 설정 증발(Bug 4) 방지를 위한 키 매핑 개선
+    function toggleDescToAll() {
+        if(!currentSceneId) return;
+        const scene = scenarios.find(s => s.id === currentSceneId);
+        let lines = scene.narration.split('\n');
+        
+        let hasDesc = lines.some(l => l.trim().startsWith('/desc '));
+        let oldToNew = {};
+
+        if(hasDesc) {
+            lines = lines.map(line => {
+                if(line.trim().startsWith('/desc ')) {
+                    let newLine = line.replace(/^\s*\/desc\s+/, '');
+                    oldToNew[line.trim()] = newLine.trim();
+                    return newLine;
+                }
+                return line;
+            });
+        } else {
+            lines = lines.map(line => {
+                const t = line.trim();
+                if(t === '' || t.startsWith('/') || t.startsWith('#')) return line;
+                let newLine = '/desc ' + line;
+                oldToNew[line.trim()] = newLine.trim();
+                return newLine;
+            });
+        }
+        
+        // 데이터 보존: 바뀐 텍스트에 맞춰 설정들의 Key 값도 변경
+        let newRolls = {};
+        for(let key in scene.rolls) newRolls[oldToNew[key] || key] = scene.rolls[key];
+        scene.rolls = newRolls;
+
+        let newChoices = {};
+        for(let key in scene.lineChoices) newChoices[oldToNew[key] || key] = scene.lineChoices[key];
+        scene.lineChoices = newChoices;
+
+        if(scene.highlights) scene.highlights = scene.highlights.map(h => oldToNew[h] || h);
+        if(scene.dims) scene.dims = scene.dims.map(d => oldToNew[d] || d);
+
+        scene.narration = lines.join('\n');
+        saveToMemory();
+        if(!isKpMode) renderEditor(currentSceneId);
+        renderKPView(currentSceneId);
+    }
+
+    function openReplaceModal() {
+        if(!currentSceneId) return;
+        openCustomPrompt("찾을 단어 입력:", "", (findText) => {
+            if(!findText) return;
+            setTimeout(() => { 
+                openCustomPrompt(`'${findText}'을(를) 무엇으로 바꿀까요?`, "", (replaceText) => {
+                    const scene = scenarios.find(s => s.id === currentSceneId);
+                    scene.narration = scene.narration.split(findText).join(replaceText);
+                    
+                    let newRolls = {};
+                    for(let key in scene.rolls) newRolls[key.split(findText).join(replaceText)] = scene.rolls[key];
+                    scene.rolls = newRolls;
+
+                    let newChoices = {};
+                    for(let key in scene.lineChoices) newChoices[key.split(findText).join(replaceText)] = scene.lineChoices[key];
+                    scene.lineChoices = newChoices;
+
+                    if(scene.highlights) scene.highlights = scene.highlights.map(h => h.split(findText).join(replaceText));
+                    if(scene.dims) scene.dims = scene.dims.map(d => d.split(findText).join(replaceText));
+
+                    saveToMemory();
+                    if(!isKpMode) renderEditor(currentSceneId);
+                    renderKPView(currentSceneId);
+                });
+            }, 100); 
+        });
+    }
+
+    function updateRollTitle(sceneId, choiceId, encodedLineKey, titleKey, newTitle) {
+        const scene = scenarios.find(s => s.id === sceneId);
+        const lineKey = decodeURIComponent(encodedLineKey);
+        const rollObj = choiceId ? findChoiceById(scene, choiceId).rolls[lineKey] : scene.rolls[lineKey];
+        if(rollObj && rollObj[titleKey] !== newTitle) {
+            rollObj[titleKey] = newTitle.trim() || getDefaultTitle(titleKey);
+            saveToMemory();
+            renderKPView(sceneId);
+            if(!isKpMode) renderEditor(sceneId);
+        }
+    }
+
+    function getDefaultTitle(key) {
+        if(key==='successTitle') return '🟢 성공';
+        if(key==='failureTitle') return '🔴 실패';
+        if(key==='critSuccessTitle') return '🔵 대성공';
+        if(key==='fumbleTitle') return '🟣 대실패';
+        return '';
+    }
+
+    function updateChoiceData(sceneId, choiceId, key, value) { const scene = scenarios.find(s => s.id === sceneId); if(scene && scene.lineChoices) { const lineKey = Object.keys(scene.lineChoices).find(l => scene.lineChoices[l].some(c => c.id === choiceId)); if(lineKey) { const choice = scene.lineChoices[lineKey].find(c => c.id === choiceId); if(choice) { choice[key] = value; saveToMemory(); renderKPView(sceneId); } } } }
+    
+    function updateRollData(sceneId, choiceId, encodedLineKey, key, value) { 
+        const scene = scenarios.find(s => s.id === sceneId); 
+        const lineKey = decodeURIComponent(encodedLineKey);
+        if (!choiceId) scene.rolls[lineKey][key] = value; 
+        else { const choice = Object.keys(scene.lineChoices).map(l => scene.lineChoices[l]).flat().find(c => c.id === choiceId); if(choice) { if(!choice.rolls[lineKey]) choice.rolls[lineKey] = {}; choice.rolls[lineKey][key] = value; } } 
+        saveToMemory(); renderKPView(sceneId); 
+    }
+    
+    function updateInlineRollLine(sceneId, choiceId, encodedLineKey, rollType, rIndex, newText) {
+        const scene = scenarios.find(s => s.id === sceneId);
+        const lineKey = decodeURIComponent(encodedLineKey);
+        let rollObj = choiceId ? findChoiceById(scene, choiceId).rolls[lineKey] : scene.rolls[lineKey];
+        if (!rollObj) return;
+
+        const lines = rollObj[rollType].split('\n');
+        if (lines[rIndex] === newText) return;
+        lines[rIndex] = newText;
+        rollObj[rollType] = lines.join('\n');
+        
+        saveToMemory();
+        if(!isKpMode) renderEditor(sceneId);
+        renderKPView(sceneId);
+    }
+
+    function renderEditor(id) {
+        saveTextareaHeights(); 
+        
+        const scene = scenarios.find(s => s.id === id);
+        if (!scene) return;
+        if (!scene.rolls) scene.rolls = {};
+
+        const btnHighlight = document.getElementById('btn-auto-highlight');
+        if(btnHighlight) {
+            if(scene.highlightWord && scene.highlightWord !== "") {
+                btnHighlight.style.backgroundColor = "#fef08a";
+                btnHighlight.style.borderColor = "#facc15";
+                btnHighlight.style.color = "#a16207";
+                btnHighlight.innerHTML = `자동 강조<br><span style="font-size:0.7rem">(${scene.highlightWord})</span>`;
+            } else {
+                btnHighlight.style.backgroundColor = ""; 
+                btnHighlight.style.borderColor = "";
+                btnHighlight.style.color = "";
+                btnHighlight.innerHTML = "자동<br>강조";
+            }
+        }
+
+        const lines = scene.narration.split('\n');
+        const activeBlockLines = (focusedKpIndex !== null && focusedKpEndIndex !== null) 
+            ? lines.slice(focusedKpIndex, focusedKpEndIndex + 1).join('\n') 
+            : null;
+
+        let html = `
+            <div class="input-group">
+                <label>나레이션 (에디터/KP 패널 자동동기화)
+                    ${getFontCtrl('main')}
+                </label>
+                <textarea id="main-narration-textarea" class="large-textarea resizable-text" style="font-size: ${fontSizes.main}px;" oninput="updateSceneData('${id}', 'narration', this.value)">${escapeHtml(scene.narration)}</textarea>
+            </div>
+        `;
+
+        if (activeBlockLines !== null) {
+            html += `<div id="quick-editor-container">
+                        <div class="quick-editor-box" style="margin-bottom: 16px;">
+                            <h4 style="margin-top:0; color:var(--primary); font-size:0.95rem; display:flex; justify-content:space-between; align-items:center;">
+                                <span>✏️ 빠른 편집</span>
+                                ${getFontCtrl('quick')}
+                            </h4>
+                            <textarea id="quick-editor-textarea" class="resizable-text" style="font-size:${fontSizes.quick}px; min-height:60px; width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; box-sizing:border-box;" oninput="updateInlineNarrationBlock('${id}', ${focusedKpIndex}, ${focusedKpEndIndex}, this.value)">${escapeHtml(activeBlockLines)}</textarea>
+                        </div>`;
+            
+            const cleanActiveLine = lines[focusedKpIndex].trim();
+            
+            let occCount = 0;
+            for(let i=0; i<focusedKpIndex; i++) {
+                if(lines[i].trim() === cleanActiveLine) occCount++;
+            }
+            const activeLineKey = occCount === 0 ? cleanActiveLine : cleanActiveLine + "_$$_" + occCount;
+            const encLineKey = safeEncode(activeLineKey);
+            
+            if (scene.rolls[activeLineKey]) {
+                const roll = scene.rolls[activeLineKey];
+                if (roll.hasBasic === undefined) roll.hasBasic = true;
+
+                html += `<div class="roll-editor-box">
+                            <h4 style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>🎲 [판정 편집] ${escapeHtml(cleanActiveLine.length > 20 ? cleanActiveLine.substring(0,20)+'...' : cleanActiveLine)}</span>
+                                ${getFontCtrl('roll')}
+                            </h4>`;
+                
+                if (roll.hasBasic) {
+                    html += `<div class="roll-grid">
+                                <textarea class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[성공] 텍스트" oninput="updateRollData('${id}', null, '${encLineKey}', 'success', this.value)">${escapeHtml(roll.success)}</textarea>
+                                <textarea class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[실패] 텍스트" oninput="updateRollData('${id}', null, '${encLineKey}', 'failure', this.value)">${escapeHtml(roll.failure)}</textarea>
+                             </div>`;
+                }
+
+                if (roll.hasCrit) {
+                    html += `<div class="roll-grid" style="${roll.hasBasic ? 'margin-top:12px;' : ''}">
+                                <textarea class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[대성공] 텍스트" oninput="updateRollData('${id}', null, '${encLineKey}', 'critSuccess', this.value)">${escapeHtml(roll.critSuccess || '')}</textarea>
+                                <textarea class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[대실패] 텍스트" oninput="updateRollData('${id}', null, '${encLineKey}', 'fumble', this.value)">${escapeHtml(roll.fumble || '')}</textarea>
+                             </div>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+            
+        if (currentChoiceId) {
+            const activeChoice = findChoiceById(scene, currentChoiceId);
+            const parentLineKey = findLineByChoiceId(scene, currentChoiceId);
+            
+            if (activeChoice && parentLineKey) {
+                const displayParentLine = parentLineKey.split('_$$_')[0];
+                html += `
+                    <h3 style="font-size:1.05rem; color:var(--primary); border-bottom: 2px solid var(--border-light); padding-bottom:8px; margin-top:24px; font-weight:700;">선택지 토큰 상세 편집</h3>
+                    <div class="choice-editor-box" style="margin-bottom:15px;">
+                        <button class="close-editor-btn" onclick="toggleChoice('${id}', null)">✖</button>
+                        <div class="input-group">
+                            <label style="color:var(--primary);">탐사자의 행동 (상황: "${escapeHtml(displayParentLine.substring(0,15))}...")</label>
+                            <input type="text" style="padding: 6px 12px; font-size: 0.95rem;" value="${escapeHtml(activeChoice.action)}" oninput="updateChoiceData('${id}', '${currentChoiceId}', 'action', this.value)">
+                        </div>
+                        <div class="input-group">
+                            <label style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>결과 나레이션</span>
+                                ${getFontCtrl('choice')}
+                            </label>
+                            <textarea id="choice-result-textarea" class="resizable-text" style="font-size: ${fontSizes.choice}px; min-height: 120px;" oninput="updateChoiceData('${id}', '${currentChoiceId}', 'result', this.value)">${escapeHtml(activeChoice.result)}</textarea>
+                        </div>
+                `;
+                
+                if (!activeChoice.rolls) activeChoice.rolls = {};
+                Object.keys(activeChoice.rolls).forEach((rLineKey, rIdx) => {
+                    const roll = activeChoice.rolls[rLineKey];
+                    if (roll.hasBasic === undefined) roll.hasBasic = true;
+                    const encLineKey = safeEncode(rLineKey);
+                    const displayText = rLineKey.split('_$$_')[0];
+                    html += `
+                        <div class="roll-editor-box" style="background-color:#ffffff; margin-top:16px;">
+                            <h4 style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>🎲 [결과 판정] ${escapeHtml(displayText.length > 20 ? displayText.substring(0,20)+'...' : displayText)}</span>
+                                ${getFontCtrl('roll')}
+                            </h4>`;
+                            
+                    if (roll.hasBasic) {
+                        html += `<div class="roll-grid">
+                                    <textarea id="choice-roll-success-${rIdx}" class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[성공] 텍스트" oninput="updateRollData('${id}', '${currentChoiceId}', '${encLineKey}', 'success', this.value)">${escapeHtml(roll.success)}</textarea>
+                                    <textarea id="choice-roll-failure-${rIdx}" class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[실패] 텍스트" oninput="updateRollData('${id}', '${currentChoiceId}', '${encLineKey}', 'failure', this.value)">${escapeHtml(roll.failure)}</textarea>
+                                 </div>`;
+                    }
+                    if (roll.hasCrit) {
+                        html += `<div class="roll-grid" style="${roll.hasBasic ? 'margin-top:12px;' : ''}">
+                                    <textarea class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[대성공] 텍스트" oninput="updateRollData('${id}', '${currentChoiceId}', '${encLineKey}', 'critSuccess', this.value)">${escapeHtml(roll.critSuccess || '')}</textarea>
+                                    <textarea class="resizable-text" style="font-size:${fontSizes.roll}px; min-height:80px;" placeholder="[대실패] 텍스트" oninput="updateRollData('${id}', '${currentChoiceId}', '${encLineKey}', 'fumble', this.value)">${escapeHtml(roll.fumble || '')}</textarea>
+                                 </div>`;
+                    }
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            } else { currentChoiceId = null; }
+        }
+        document.getElementById('editor-area').innerHTML = html;
+        restoreTextareaHeights(); 
+    }
+
+    function toggleChoice(sceneId, choiceId) {
+        if (currentChoiceId === choiceId) currentChoiceId = null; else currentChoiceId = choiceId;
+        if(!isKpMode) renderEditor(sceneId); 
+        renderKPView(sceneId);
+    }
+    
+    function focusKpLine(startIdx, endIdx) {
+        focusedKpIndex = startIdx;
+        focusedKpEndIndex = endIdx;
+        currentChoiceId = null; 
+        
+        if(currentSceneId && !isKpMode) { 
+            renderEditor(currentSceneId); 
+            
+            document.querySelectorAll('.kp-draggable-item').forEach((el) => {
+                if (parseInt(el.getAttribute('data-index')) === startIdx) {
+                    el.classList.add('focused-line');
+                } else {
+                    el.classList.remove('focused-line');
+                }
+            });
+            
+            setTimeout(() => {
+                const mainTextArea = document.getElementById('main-narration-textarea');
+                const quickTextArea = document.getElementById('quick-editor-textarea');
+                
+                if(mainTextArea) {
+                    const scene = scenarios.find(s => s.id === currentSceneId);
+                    const lines = scene.narration.split('\n');
+                    
+                    let charPosStart = 0;
+                    for(let i = 0; i < startIdx; i++) charPosStart += lines[i].length + 1; 
+                    
+                    let charPosEnd = charPosStart;
+                    for(let i = startIdx; i <= endIdx; i++) charPosEnd += lines[i].length + (i === endIdx ? 0 : 1);
+                    
+                    mainTextArea.focus();
+                    mainTextArea.setSelectionRange(charPosStart, charPosEnd);
+                    
+                    if (mainTextArea.value.length > 0) {
+                        const textRatio = charPosStart / mainTextArea.value.length;
+                        const targetScroll = (mainTextArea.scrollHeight * textRatio) - (mainTextArea.clientHeight / 2);
+                        mainTextArea.scrollTop = targetScroll;
+                    }
+
+                    if(quickTextArea) {
+                        setTimeout(() => {
+                            quickTextArea.focus();
+                            quickTextArea.setSelectionRange(quickTextArea.value.length, quickTextArea.value.length);
+                        }, 50); 
+                    }
+                }
+            }, 50);
+        }
+    }
+
+    function generateDiceLinesHtml(text, btnClass, sceneId, choiceId, lineKey, rollType) {
+        if (!text || text.trim() === '') return `<div class="dice-text" style="color:#64748b;">(내용 없음)</div>`;
+        const lines = text.split('\n'); let html = '';
+        const encodedLineKey = safeEncode(lineKey);
+        
+        lines.forEach((line, rIndex) => {
+            if (line.trim() === '') return;
+            const encoded = safeEncode(line);
+            html += `<div class="dice-line-wrapper">
+                        <div class="dice-text" contenteditable="true"
+                             onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;"
+                             onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateInlineRollLine('${sceneId}', '${choiceId || ''}', '${encodedLineKey}', '${rollType}', ${rIndex}, this.innerText);"
+                             onclick="event.stopPropagation();"
+                             style="outline:none; cursor:text;">${escapeHtml(line)}</div>
+                        <button class="dice-btn ${btnClass}" onclick="copyEncodedText(this, '${encoded}'); event.stopPropagation();">복사</button>
+                     </div>`;
+        });
+        return html;
+    }
+
+    function copyEncodedText(btn, encodedText) {
+        if (!encodedText) return;
+        const text = decodeURIComponent(encodedText);
+        if(!text.trim()) return;
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.innerText; 
+            const bg = btn.style.backgroundColor; 
+            btn.innerText = "✅"; 
+            btn.style.backgroundColor = "var(--success)"; 
+            setTimeout(() => { btn.innerText = original; btn.style.backgroundColor = bg; }, 800);
+        }).catch(err => customAlert("복사 실패: " + err));
+    }
+
+    function renderKPView(id) {
+        const scene = scenarios.find(s => s.id === id);
+        let html = `<div class="kp-section">
+                    <div style="color:#94a3b8; font-size:0.75rem; margin-bottom:10px; font-weight:600;">▶ 상황 제시 (우클릭: 블라인드 및 추가기능 / 클릭: 편집)</div>`;
+
+        if (scene.narration) {
+            let parsedBlocks = [];
+            const rawLines = scene.narration.split('\n');
+            let textOccurrences = {}; 
+            
+            function buildNarrationHtml(cleanLine, originalText, startIdx, endIdx) {
+                let innerHtml = '';
+                let occ = textOccurrences[cleanLine] || 0;
+                textOccurrences[cleanLine] = occ + 1;
+                const lineKey = occ === 0 ? cleanLine : cleanLine + "_$$_" + occ;
+
+                const isHighlighted = (scene.highlights && scene.highlights.includes(lineKey)) || 
+                                      cleanLine.includes('/emas " "') || 
+                                      (scene.highlightWord && scene.highlightWord !== "" && cleanLine.includes(scene.highlightWord)); 
+                
+                const highlightClass = isHighlighted ? 'pink-highlight' : ''; 
+                const isDimmed = scene.dims && scene.dims.includes(lineKey) ? 'dimmed' : '';
+                const copyBtnColor = isHighlighted ? 'var(--special)' : 'var(--primary)';
+                const encodedLineKey = safeEncode(lineKey);
+                const encodedText = safeEncode(originalText);
+                
+                innerHtml += `<div class="line-copy-box ${highlightClass} ${isDimmed}" oncontextmenu="showContextMenu(event, 'kpline', '${scene.id}', null, '${encodedLineKey}', 'narration', ${startIdx}, ${endIdx}, '${encodedText}')">
+                        <div class="line-copy-text" ${isKpMode ? `contenteditable="true" onblur="handleInlineEdit('${scene.id}', null, '${encodedLineKey}', '${encodedText}', ${startIdx}, this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"` : ''}>${escapeHtml(originalText)}</div>
+                        <button class="line-copy-btn" style="background-color: ${copyBtnColor};" onclick="copyEncodedText(this, '${encodedText}'); event.stopPropagation();">복사</button>
+                    </div>`;
+                    
+                if (scene.rolls && scene.rolls[lineKey]) { 
+                    const rollData = scene.rolls[lineKey]; 
+                    if (rollData.hasBasic === undefined) rollData.hasBasic = true;
+                    
+                    innerHtml += `
+                        <div style="text-align: right; margin-bottom: 4px;">
+                            <span style="cursor:pointer; font-size:0.75rem; color:#94a3b8; font-weight:bold; padding:2px 8px; border-radius:4px; background:rgba(0,0,0,0.15);" onclick="toggleRollCollapse('${scene.id}', null, '${encodedLineKey}'); event.stopPropagation();">
+                                ${rollData.isCollapsed ? '▶ 판정 펴기' : '▼ 판정 접기'}
+                            </span>
+                        </div>
+                        <div class="dice-result-container" style="${rollData.isCollapsed ? 'display:none;' : ''}">
+                    `;
+                    
+                    if (rollData.hasBasic !== false) {
+                        innerHtml += `<div class="dice-box success ${rollData.successDimmed ? 'dimmed' : ''}" onclick="focusKpLine(${startIdx}, ${endIdx});" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', null, '${encodedLineKey}', 'success', 'success')">
+                                    <div class="dice-title-container" onclick="event.stopPropagation();">
+                                        <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', null, '${encodedLineKey}', 'successTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rollData.successTitle || '🟢 성공')}</div>
+                                    </div>
+                                    ${generateDiceLinesHtml(rollData.success, 'success', scene.id, null, lineKey, 'success')}
+                                 </div>
+                                 <div class="dice-box failure ${rollData.failureDimmed ? 'dimmed' : ''}" onclick="focusKpLine(${startIdx}, ${endIdx});" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', null, '${encodedLineKey}', 'failure', 'failure')">
+                                    <div class="dice-title-container" onclick="event.stopPropagation();">
+                                        <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', null, '${encodedLineKey}', 'failureTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rollData.failureTitle || '🔴 실패')}</div>
+                                    </div>
+                                    ${generateDiceLinesHtml(rollData.failure, 'failure', scene.id, null, lineKey, 'failure')}
+                                 </div>`;
+                    }
+                    if(rollData.hasCrit) {
+                        innerHtml += `<div class="dice-box crit-success ${rollData.critSuccessDimmed ? 'dimmed' : ''}" onclick="focusKpLine(${startIdx}, ${endIdx});" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', null, '${encodedLineKey}', 'critSuccess', 'critSuccess')">
+                                    <div class="dice-title-container" onclick="event.stopPropagation();">
+                                        <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', null, '${encodedLineKey}', 'critSuccessTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rollData.critSuccessTitle || '🔵 대성공')}</div>
+                                    </div>
+                                    ${generateDiceLinesHtml(rollData.critSuccess, 'success', scene.id, null, lineKey, 'critSuccess')}
+                                 </div>
+                                 <div class="dice-box fumble ${rollData.fumbleDimmed ? 'dimmed' : ''}" onclick="focusKpLine(${startIdx}, ${endIdx});" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', null, '${encodedLineKey}', 'fumble', 'fumble')">
+                                    <div class="dice-title-container" onclick="event.stopPropagation();">
+                                        <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', null, '${encodedLineKey}', 'fumbleTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rollData.fumbleTitle || '🟣 대실패')}</div>
+                                    </div>
+                                    ${generateDiceLinesHtml(rollData.fumble, 'failure', scene.id, null, lineKey, 'fumble')}
+                                 </div>`;
+                    }
+                    innerHtml += `</div>`; 
+                }
+                if (scene.lineChoices && scene.lineChoices[lineKey] && scene.lineChoices[lineKey].length > 0) {
+                    innerHtml += `<div class="kp-choice-container"><div class="kp-choice-buttons">`;
+                    scene.lineChoices[lineKey].forEach((c, cIndex) => { 
+                        innerHtml += `
+                        <button class="choice-token-btn ${c.isSpecial ? 'special' : ''} ${currentChoiceId === c.id ? 'active' : ''}" style="${c.isChecked ? 'opacity:0.50;' : ''}" onclick="if(!isKpMode){ currentChoiceId = '${c.id}'; renderEditor('${scene.id}'); renderKPView('${scene.id}'); } event.stopPropagation();" oncontextmenu="showContextMenu(event, 'token', '${scene.id}', '${c.id}', null, 'token')">
+                            <div class="custom-checkbox ${c.isChecked ? 'checked' : ''}" onclick="updateChoiceCheck('${scene.id}', '${encodedLineKey}', '${c.id}', ${!c.isChecked}); event.stopPropagation();" title="조사 완료 체크"></div>
+                            <span>${cIndex + 1}. ${escapeHtml(c.action)}</span>
+                        </button>`; 
+                    });
+                    innerHtml += `</div>`;
+                    const activeChoice = scene.lineChoices[lineKey].find(c => c.id === currentChoiceId);
+                    if (activeChoice) {
+                        innerHtml += `
+                            <div class="kp-choice-result-box ${activeChoice.isSpecial ? 'special-border' : ''}">
+                        `;
+                        
+                        let resultOccurrences = {};
+                        activeChoice.result.split('\n').forEach((rLine, rLineIdx) => { 
+                            const cleanRLine = rLine.trim();
+                            if(cleanRLine==='') return; 
+                            
+                            let rOcc = resultOccurrences[cleanRLine] || 0;
+                            resultOccurrences[cleanRLine] = rOcc + 1;
+                            const rLineKey = rOcc === 0 ? cleanRLine : cleanRLine + "_$$_" + rOcc;
+                            
+                            const rEncodedKey = safeEncode(rLineKey);
+                            const rEncodedText = safeEncode(cleanRLine);
+                            const isResultDimmed = activeChoice.dims && activeChoice.dims.includes(rLineKey) ? 'dimmed' : '';
+                            
+                            const isResultHighlighted = (activeChoice.highlights && activeChoice.highlights.includes(rLineKey)) || 
+                                                        rLine.includes('/emas " "') || 
+                                                        (scene.highlightWord && scene.highlightWord !== "" && rLine.includes(scene.highlightWord));
+                            
+                            innerHtml += `<div class="line-copy-box ${isResultHighlighted ? 'pink-highlight' : ''} ${isResultDimmed}" style="margin-bottom:6px;" onclick="if(!isKpMode){ currentChoiceId = '${activeChoice.id}'; renderEditor('${scene.id}'); renderKPView('${scene.id}'); } event.stopPropagation();" oncontextmenu="showContextMenu(event, 'kpline', '${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'result', ${rLineIdx}, ${rLineIdx}, '${rEncodedText}')">
+                                        <div class="line-copy-text" ${isKpMode ? `contenteditable="true" onblur="handleInlineEdit('${scene.id}', '${activeChoice.id}', '${rEncodedKey}', '${rEncodedText}', ${rLineIdx}, this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur();}"` : ''}>${escapeHtml(rLine)}</div>
+                                        <button class="line-copy-btn" style="background-color:${activeChoice.isSpecial || isResultHighlighted ? 'var(--special)' : 'var(--success)'};" onclick="copyEncodedText(this, '${rEncodedText}'); event.stopPropagation();">복사</button>
+                                    </div>`; 
+                            if(activeChoice.rolls && activeChoice.rolls[rLineKey]) { 
+                                const rRoll = activeChoice.rolls[rLineKey]; 
+                                if (rRoll.hasBasic === undefined) rRoll.hasBasic = true;
+                                
+                                innerHtml += `
+                                    <div style="text-align: right; margin-bottom: 4px;">
+                                        <span style="cursor:pointer; font-size:0.75rem; color:#94a3b8; font-weight:bold; padding:2px 8px; border-radius:4px; background:rgba(0,0,0,0.15);" onclick="toggleRollCollapse('${scene.id}', '${activeChoice.id}', '${rEncodedKey}'); event.stopPropagation();">
+                                            ${rRoll.isCollapsed ? '▶ 판정 펴기' : '▼ 판정 접기'}
+                                        </span>
+                                    </div>
+                                    <div class="dice-result-container" style="${rRoll.isCollapsed ? 'display:none;' : ''}">
+                                `;
+                                
+                                if (rRoll.hasBasic !== false) {
+                                    innerHtml += `<div class="dice-box success ${rRoll.successDimmed ? 'dimmed' : ''}" onclick="if(!isKpMode){ currentChoiceId = '${activeChoice.id}'; renderEditor('${scene.id}'); renderKPView('${scene.id}'); }" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'success', 'success')">
+                                                <div class="dice-title-container" onclick="event.stopPropagation();">
+                                                    <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'successTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rRoll.successTitle || '🟢 성공')}</div>
+                                                </div>
+                                                ${generateDiceLinesHtml(rRoll.success, 'success', scene.id, activeChoice.id, rLineKey, 'success')}
+                                             </div>
+                                             <div class="dice-box failure ${rRoll.failureDimmed ? 'dimmed' : ''}" onclick="if(!isKpMode){ currentChoiceId = '${activeChoice.id}'; renderEditor('${scene.id}'); renderKPView('${scene.id}'); }" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'failure', 'failure')">
+                                                <div class="dice-title-container" onclick="event.stopPropagation();">
+                                                    <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'failureTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rRoll.failureTitle || '🔴 실패')}</div>
+                                                </div>
+                                                ${generateDiceLinesHtml(rRoll.failure, 'failure', scene.id, activeChoice.id, rLineKey, 'failure')}
+                                             </div>`;
+                                }
+                                if(rRoll.hasCrit) {
+                                    innerHtml += `<div class="dice-box crit-success ${rRoll.critSuccessDimmed ? 'dimmed' : ''}" onclick="if(!isKpMode){ currentChoiceId = '${activeChoice.id}'; renderEditor('${scene.id}'); renderKPView('${scene.id}'); }" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'critSuccess', 'critSuccess')">
+                                                <div class="dice-title-container" onclick="event.stopPropagation();">
+                                                    <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'critSuccessTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rRoll.critSuccessTitle || '🔵 대성공')}</div>
+                                                </div>
+                                                ${generateDiceLinesHtml(rRoll.critSuccess, 'success', scene.id, activeChoice.id, rLineKey, 'critSuccess')}
+                                             </div>
+                                             <div class="dice-box fumble ${rRoll.fumbleDimmed ? 'dimmed' : ''}" onclick="if(!isKpMode){ currentChoiceId = '${activeChoice.id}'; renderEditor('${scene.id}'); renderKPView('${scene.id}'); }" oncontextmenu="showContextMenu(event, 'roll_box', '${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'fumble', 'fumble')">
+                                                <div class="dice-title-container" onclick="event.stopPropagation();">
+                                                    <div class="dice-title" contenteditable="true" onfocus="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = false;" onblur="const p = this.closest('.kp-draggable-item'); if(p) p.draggable = true; updateRollTitle('${scene.id}', '${activeChoice.id}', '${rEncodedKey}', 'fumbleTitle', this.innerText);" onclick="event.stopPropagation();" style="outline:none; cursor:text;">${escapeHtml(rRoll.fumbleTitle || '🟣 대실패')}</div>
+                                                </div>
+                                                ${generateDiceLinesHtml(rRoll.fumble, 'failure', scene.id, activeChoice.id, rLineKey, 'fumble')}
+                                             </div>`;
+                                }
+                                innerHtml += `</div>`; 
+                            } 
+                        });
+                        innerHtml += `</div>`;
+                    }
+                    innerHtml += `</div>`;
+                }
+                return innerHtml;
+            }
+            
+            let i = 0;
+            while(i < rawLines.length) {
+                let line = rawLines[i];
+                let tLine = line.trim();
+                if (tLine === '') { i++; continue; }
+                
+                if (tLine.startsWith('#MEMO:') || tLine.startsWith('#BGM:') || tLine.startsWith('#COND:')) {
+                    let type = tLine.startsWith('#MEMO:') ? 'memo' : (tLine.startsWith('#BGM:') ? 'bgm' : 'cond');
+                    let prefixLen = type === 'memo' ? 6 : (type === 'bgm' ? 5 : 6);
+                    let titleOrFirstLine = line.substring(prefixLen).trimStart();
+                    
+                    let blockLines = [];
+                    let startIdx = i;
+                    i++;
+                    while(i < rawLines.length) {
+                        let nextLine = rawLines[i];
+                        let nLine = nextLine.trim();
+                        if (nLine === '' || nLine.startsWith('#')) break;
+                        blockLines.push(nextLine);
+                        i++;
+                    }
+                    
+                    if (type === 'cond') {
+                        parsedBlocks.push({ type: 'cond', title: titleOrFirstLine, innerLines: blockLines, startIdx, endIdx: i - 1 });
+                    } else {
+                        parsedBlocks.push({ type, text: [titleOrFirstLine, ...blockLines].join('\n'), startIdx, endIdx: i - 1, fullText: [titleOrFirstLine, ...blockLines].join('\n') });
+                    }
+                } else {
+                    parsedBlocks.push({ type: 'narration', text: line, startIdx: i, endIdx: i });
+                    i++;
+                }
+            }
+
+            parsedBlocks.forEach(block => {
+                const isFocused = (!isKpMode && focusedKpIndex === block.startIdx) ? 'focused-line' : '';
+                const dragAttrs = isKpMode ? '' : `draggable="true" ondragstart="kpDragStart(event, ${block.startIdx}, ${block.endIdx})" ondragover="kpDragOver(event)" ondragleave="kpDragLeave(event)" ondrop="kpDrop(event, ${block.startIdx})" ondragend="kpDragEnd(event)"`;
+                
+                html += `<div class="kp-draggable-item ${isFocused}" data-index="${block.startIdx}" ${dragAttrs}>`;
+                
+                if (block.type === 'bgm') {
+                    const cleanLine = block.text.trim();
+                    let occ = textOccurrences[cleanLine] || 0; textOccurrences[cleanLine] = occ + 1;
+                    const lineKey = occ === 0 ? cleanLine : cleanLine + "_$$_" + occ;
+
+                    const isDimmed = scene.dims && scene.dims.includes(lineKey) ? 'dimmed' : '';
+                    const displayHtml = escapeHtml(block.text).replace(/\n/g, '<br>');
+                    const encodedLineKey = safeEncode(lineKey);
+                    const encodedText = safeEncode(block.text);
+                    html += `<div class="kp-bgm-box ${isDimmed}" onclick="focusKpLine(${block.startIdx}, ${block.endIdx})" oncontextmenu="showContextMenu(event, 'bgm_line', '${scene.id}', null, '${encodedLineKey}', 'bgm', ${block.startIdx}, ${block.endIdx}, '${encodedText}')">
+                                <div style="flex-shrink:0;">🎵 BGM: </div> <span style="line-height:1.4; flex-grow:1;">${displayHtml}</span>
+                             </div>`;
+                } else if (block.type === 'memo') {
+                    const cleanLine = block.text.trim();
+                    let occ = textOccurrences[cleanLine] || 0; textOccurrences[cleanLine] = occ + 1;
+                    const lineKey = occ === 0 ? cleanLine : cleanLine + "_$$_" + occ;
+
+                    const isDimmed = scene.dims && scene.dims.includes(lineKey) ? 'dimmed' : '';
+                    const displayHtml = escapeHtml(block.text).replace(/\n/g, '<br>');
+                    const encodedLineKey = safeEncode(lineKey);
+                    const encodedText = safeEncode(block.text);
+                    html += `<div class="kp-memo-box ${isDimmed}" onclick="focusKpLine(${block.startIdx}, ${block.endIdx})" oncontextmenu="showContextMenu(event, 'memo_line', '${scene.id}', null, '${encodedLineKey}', 'memo', ${block.startIdx}, ${block.endIdx}, '${encodedText}')">
+                                <div style="flex-grow:1;">
+                                    <div style="margin-bottom:4px;">📝 [KP 메모]</div>
+                                    <span style="line-height:1.4; display:block;">${displayHtml}</span>
+                                </div>
+                             </div>`;
+                } else if (block.type === 'cond') {
+                    const condKey = "cond_" + block.startIdx;
+                    if(!scene.condStates) scene.condStates = {};
+                    const isExpanded = scene.condStates[condKey] || false;
+
+                    html += `<div class="cond-box-wrapper" style="background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(4px); border: 2px dashed #94a3b8; border-radius: 10px; padding: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" oncontextmenu="showContextMenu(event, 'cond_box', '${scene.id}', null, null, 'cond', ${block.startIdx}, ${block.endIdx})">
+                        <details class="cond-box" ${isExpanded ? 'open' : ''}>
+                            <summary style="font-weight: 800; color: #334155; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px; outline: none; list-style: none;" onclick="event.preventDefault(); const d = this.closest('details'); d.open = !d.open; updateCondState('${scene.id}', '${condKey}', d.open); const cb = this.querySelector('.custom-checkbox'); if(d.open) cb.classList.add('checked'); else cb.classList.remove('checked'); event.stopPropagation();">
+                                <div class="custom-checkbox ${isExpanded ? 'checked' : ''}"></div>
+                                <span style="font-size: 0.95rem;">🔒 [조건] ${escapeHtml(block.title)}</span>
+                            </summary>
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #cbd5e1; display: flex; flex-direction: column; gap: 6px;">`;
+
+                    block.innerLines.forEach((innerLine, idxOffset) => {
+                        let actualIdx = block.startIdx + 1 + idxOffset;
+                        html += buildNarrationHtml(innerLine.trim(), innerLine, actualIdx, actualIdx);
+                    });
+
+                    html += `   </div>
+                        </details>
+                    </div>`;
+                } else {
+                    html += `<div onclick="focusKpLine(${block.startIdx}, ${block.endIdx})">` + buildNarrationHtml(block.text.trim(), block.text, block.startIdx, block.endIdx) + `</div>`;
+                }
+                
+                html += `</div>`;
+            });
+        }
+        
+        html += `</div>`;
+        document.getElementById('kp-area').innerHTML = html;
+    }
+
+    function addFolder() { scenarios.push({ id: "folder_" + Date.now(), type: 'folder', parentId: null, title: "새로운 폴더", isExpanded: true, isBookmarked: false }); saveToMemory(); renderSceneList(); }
+    function addScene(parentId) { 
+        const newScene = { 
+            id: "scene_" + Date.now(), 
+            type: 'scene', 
+            parentId, 
+            title: "새로운 장면", 
+            narration: "", 
+            isExpanded: true, 
+            dims: [], 
+            highlights: [], 
+            rolls: {}, 
+            lineChoices: {}, 
+            highlightWord: "",
+            isBookmarked: false,
+            condStates: {}
+        }; 
+        scenarios.push(newScene); 
+        currentSceneId = newScene.id; 
+        currentChoiceId = null; 
+        focusedKpIndex = null; 
+        focusedKpEndIndex = null; 
+        saveToMemory(); 
+        renderSceneList(); 
+        if(!isKpMode) renderEditor(currentSceneId); 
+        renderKPView(currentSceneId); 
+    }
+    function deleteNodeRecursive(targetId) { if(confirm("삭제할까요?")) { function remove(id) { scenarios.filter(s => s.parentId === id).forEach(c => remove(c.id)); const idx = scenarios.findIndex(s => s.id === id); if (idx > -1) scenarios.splice(idx, 1); } remove(targetId); if (!scenarios.some(s => s.id === currentSceneId)) { const first = scenarios.find(s => s.type === 'scene'); currentSceneId = first ? first.id : null; currentChoiceId = null; focusedKpIndex = null; focusedKpEndIndex = null; } saveToMemory(); renderSceneList(); if (currentSceneId) { if(!isKpMode) renderEditor(currentSceneId); renderKPView(currentSceneId); } else { if(!isKpMode) document.getElementById('editor-area').innerHTML = '<div class="empty-msg" style="margin-top: 40px;">👈 좌측 하단에서 <b>[+ 장면]</b>을 추가하여 시작하세요.</div>'; document.getElementById('kp-area').innerHTML = '<div class="empty-msg">장면을 선택하면 활성화됩니다.</div>'; } } }
+</script>
+
+</body>
+</html>
